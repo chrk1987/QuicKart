@@ -23,6 +23,7 @@ data class UserPreferences(
     val isGuest: Boolean = false,
     val userPhone: String = "",
     val userName: String = "QuickKart Member",
+    val userEmail: String = "",
     val selectedNeighborhoodId: String = "indiranagar",
     val selectedAddressId: String = "addr_home"
 )
@@ -37,6 +38,7 @@ class PreferencesManager(private val context: Context) {
         val IS_GUEST = booleanPreferencesKey("is_guest")
         val USER_PHONE = stringPreferencesKey("user_phone")
         val USER_NAME = stringPreferencesKey("user_name")
+        val USER_EMAIL = stringPreferencesKey("user_email")
         val SELECTED_NEIGHBORHOOD = stringPreferencesKey("selected_neighborhood")
         val SELECTED_ADDRESS_ID = stringPreferencesKey("selected_address_id")
     }
@@ -50,6 +52,7 @@ class PreferencesManager(private val context: Context) {
             isGuest = prefs[Keys.IS_GUEST] ?: false,
             userPhone = prefs[Keys.USER_PHONE] ?: "",
             userName = prefs[Keys.USER_NAME] ?: "QuickKart Member",
+            userEmail = prefs[Keys.USER_EMAIL] ?: "",
             selectedNeighborhoodId = prefs[Keys.SELECTED_NEIGHBORHOOD] ?: "indiranagar",
             selectedAddressId = prefs[Keys.SELECTED_ADDRESS_ID] ?: "addr_home"
         )
@@ -78,13 +81,27 @@ class PreferencesManager(private val context: Context) {
         context.quickKartDataStore.edit { it[Keys.SELECTED_ADDRESS_ID] = addressId }
     }
 
-    suspend fun signInWithPhone(phone: String, neighborhoodId: String) {
+    suspend fun signInWithPhone(
+        phone: String,
+        neighborhoodId: String,
+        name: String = "Aarav Sharma",
+        email: String = ""
+    ) {
         context.quickKartDataStore.edit {
             it[Keys.IS_LOGGED_IN] = true
             it[Keys.IS_GUEST] = false
             it[Keys.USER_PHONE] = phone
-            it[Keys.USER_NAME] = "Aarav Sharma"
+            it[Keys.USER_NAME] = name.ifBlank { "QuickKart Member" }
+            it[Keys.USER_EMAIL] = email
             it[Keys.SELECTED_NEIGHBORHOOD] = neighborhoodId
+        }
+    }
+
+    suspend fun updateUserProfile(name: String, email: String, phone: String? = null) {
+        context.quickKartDataStore.edit {
+            if (name.isNotBlank()) it[Keys.USER_NAME] = name.trim()
+            it[Keys.USER_EMAIL] = email.trim()
+            if (!phone.isNullOrBlank()) it[Keys.USER_PHONE] = phone.trim()
         }
     }
 
@@ -94,6 +111,7 @@ class PreferencesManager(private val context: Context) {
             it[Keys.IS_GUEST] = true
             it[Keys.USER_PHONE] = ""
             it[Keys.USER_NAME] = "Guest Shopper"
+            it[Keys.USER_EMAIL] = ""
             it[Keys.SELECTED_NEIGHBORHOOD] = neighborhoodId
         }
     }
@@ -103,6 +121,7 @@ class PreferencesManager(private val context: Context) {
             it[Keys.IS_LOGGED_IN] = false
             it[Keys.IS_GUEST] = false
             it[Keys.USER_PHONE] = ""
+            it[Keys.USER_EMAIL] = ""
         }
     }
 }

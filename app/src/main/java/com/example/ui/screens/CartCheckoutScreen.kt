@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CreditCard
@@ -116,6 +117,7 @@ fun CartCheckoutScreen(
     onRiderNoteChange: (String) -> Unit,
     onSelectPaymentMethod: (PaymentMethod) -> Unit,
     onSelectDeliverySlot: (DeliverySlot) -> Unit,
+    onAddWalletMoney: (Int) -> Unit = {},
     onPlaceOrder: () -> Unit,
     onBrowseStorefront: () -> Unit
 ) {
@@ -175,6 +177,8 @@ fun CartCheckoutScreen(
 
     val bill = uiState.billBreakdown
     val draft = uiState.checkoutDraft
+    val walletShortfall = (bill.grandTotal - uiState.walletBalance).coerceAtLeast(0)
+    val insufficientWallet = draft.paymentMethod == PaymentMethod.WALLET && walletShortfall > 0
     val animatedProgress by animateFloatAsState(
         targetValue = bill.freeDeliveryProgress,
         animationSpec = tween(450),
@@ -791,9 +795,15 @@ fun CartCheckoutScreen(
                             PaymentMethod.entries.forEach { method ->
                                 val selected = draft.paymentMethod == method
                                 val icon = when (method) {
+                                    PaymentMethod.WALLET -> Icons.Rounded.AccountBalanceWallet
                                     PaymentMethod.UPI -> Icons.Rounded.QrCode2
                                     PaymentMethod.CARD -> Icons.Rounded.CreditCard
                                     PaymentMethod.COD -> Icons.Rounded.Payments
+                                }
+                                val subtitle = if (method == PaymentMethod.WALLET) {
+                                    "Balance: ₹${uiState.walletBalance} • Instant 1-tap checkout"
+                                } else {
+                                    method.subtitle
                                 }
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
@@ -825,7 +835,7 @@ fun CartCheckoutScreen(
                                                 color = tokens.ink
                                             )
                                             Text(
-                                                text = method.subtitle,
+                                                text = subtitle,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = tokens.muted
                                             )
@@ -835,6 +845,45 @@ fun CartCheckoutScreen(
                                             onClick = { onSelectPaymentMethod(method) },
                                             colors = RadioButtonDefaults.colors(selectedColor = tokens.ink)
                                         )
+                                    }
+                                }
+                            }
+                            if (insufficientWallet) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = tokens.alertRed.copy(alpha = 0.1f),
+                                    border = BorderStroke(1.dp, tokens.alertRed.copy(alpha = 0.4f)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("wallet_insufficient_banner")
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Need ₹$walletShortfall more in Wallet",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = tokens.alertRed,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Button(
+                                            onClick = { onAddWalletMoney(walletShortfall) },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = tokens.deliveryGreenDeep,
+                                                contentColor = Color.White
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                            modifier = Modifier.testTag("checkout_topup_wallet_button")
+                                        ) {
+                                            Text("+ Add ₹$walletShortfall", style = MaterialTheme.typography.labelSmall)
+                                        }
                                     }
                                 }
                             }
@@ -905,10 +954,13 @@ fun CartCheckoutScreen(
             ) {
                 Button(
                     onClick = onPlaceOrder,
+                    enabled = !insufficientWallet,
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tokens.deliveryGreenDeep,
-                        contentColor = Color.White
+                        contentColor = Color.White,
+                        disabledContainerColor = tokens.border,
+                        disabledContentColor = tokens.muted
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -917,7 +969,11 @@ fun CartCheckoutScreen(
                         .testTag("place_order_button")
                 ) {
                     Text(
-                        text = "Place Order • ₹${bill.grandTotal}",
+                        text = if (insufficientWallet) {
+                            "Top Up ₹$walletShortfall to Pay with Wallet"
+                        } else {
+                            "Place Order • ₹${bill.grandTotal}"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

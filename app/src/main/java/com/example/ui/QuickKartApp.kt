@@ -25,10 +25,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeliveryDining
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.rounded.DeliveryDining
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -71,6 +73,7 @@ import com.example.ui.screens.AccountHistoryScreen
 import com.example.ui.screens.CartCheckoutScreen
 import com.example.ui.screens.LiveTrackingScreen
 import com.example.ui.screens.LoginScreen
+import com.example.ui.screens.OrderHistoryScreen
 import com.example.ui.screens.StorefrontScreen
 import com.example.ui.screens.SupportScreen
 import androidx.compose.runtime.CompositionLocalProvider
@@ -159,7 +162,9 @@ fun QuickKartApp(
                         isDarkTheme = uiState.preferences.isDarkTheme,
                         onToggleTheme = viewModel::toggleDarkTheme,
                         onSelectNeighborhood = viewModel::selectNeighborhood,
-                        onSignInWithPhone = viewModel::signInWithPhone,
+                        onSignInWithPhone = { phone, nId, fName, lName, email ->
+                            viewModel.signInWithPhone(phone, nId, fName, lName, email)
+                        },
                         onContinueAsGuest = viewModel::continueAsGuest
                     )
                     return@CompositionLocalProvider
@@ -187,6 +192,7 @@ fun QuickKartApp(
                 add(BottomTab.HOME)
                 add(BottomTab.CART)
                 if (showTrackTab) add(BottomTab.TRACK)
+                add(BottomTab.ORDERS)
                 add(BottomTab.ACCOUNT)
             }
         }
@@ -375,6 +381,10 @@ fun QuickKartApp(
                                 onRiderNoteChange = viewModel::updateRiderNote,
                                 onSelectPaymentMethod = viewModel::selectPaymentMethod,
                                 onSelectDeliverySlot = viewModel::selectDeliverySlot,
+                                onAddWalletMoney = { amt ->
+                                    viewModel.addWalletMoney(amt)
+                                    showToast("Added ₹$amt to QuickKart Wallet!")
+                                },
                                 onPlaceOrder = {
                                     viewModel.placeOrder { order ->
                                         celebratingOrder = order
@@ -402,8 +412,8 @@ fun QuickKartApp(
                             )
                         }
 
-                        composable(BottomTab.ACCOUNT.route) {
-                            AccountHistoryScreen(
+                        composable(BottomTab.ORDERS.route) {
+                            OrderHistoryScreen(
                                 uiState = uiState,
                                 onAddRestockItem = { suggestion ->
                                     viewModel.addProductToCart(suggestion.product)
@@ -429,17 +439,29 @@ fun QuickKartApp(
                                     }
                                 },
                                 onSubmitRating = viewModel::submitRating,
+                                onOpenSupportForOrder = { targetOrder ->
+                                    openSupport(orderId = targetOrder.orderId, openWizardDirectly = true)
+                                },
+                                onShowMessage = { msg -> showToast(msg) }
+                            )
+                        }
+
+                        composable(BottomTab.ACCOUNT.route) {
+                            AccountHistoryScreen(
+                                uiState = uiState,
                                 onToggleTheme = viewModel::toggleDarkTheme,
                                 onToggleNotifications = viewModel::toggleNotifications,
                                 onScreenZoomChange = viewModel::setScreenZoomPercent,
                                 onSetDefaultAddress = viewModel::setDefaultAddress,
                                 onDeleteAddress = viewModel::deleteAddress,
                                 onAddAddress = viewModel::addAddress,
+                                onAddWalletMoney = viewModel::addWalletMoney,
+                                onUpdateProfile = { fName, lName, email ->
+                                    viewModel.updateUserProfile(fName, lName, email)
+                                },
+                                onOpenOrderHistory = { navigateToTab(BottomTab.ORDERS) },
                                 onOpenSupportHub = {
                                     openSupport(orderId = null, openWizardDirectly = false)
-                                },
-                                onOpenSupportForOrder = { targetOrder ->
-                                    openSupport(orderId = targetOrder.orderId, openWizardDirectly = true)
                                 },
                                 onSignOut = viewModel::signOut,
                                 onShowMessage = { msg -> showToast(msg) }
@@ -497,6 +519,7 @@ private fun TabNavIcon(
         BottomTab.HOME -> if (selected) Icons.Rounded.Home else Icons.Outlined.Home
         BottomTab.CART -> if (selected) Icons.Rounded.ShoppingCart else Icons.Outlined.ShoppingCart
         BottomTab.TRACK -> if (selected) Icons.Rounded.DeliveryDining else Icons.Outlined.DeliveryDining
+        BottomTab.ORDERS -> if (selected) Icons.Rounded.ReceiptLong else Icons.Outlined.ReceiptLong
         BottomTab.ACCOUNT -> if (selected) Icons.Rounded.Person else Icons.Outlined.Person
     }
 

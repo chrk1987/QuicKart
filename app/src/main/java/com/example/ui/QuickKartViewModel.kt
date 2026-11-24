@@ -25,6 +25,7 @@ import com.example.data.model.SupportIssueCategory
 import com.example.data.model.SupportResolutionOption
 import com.example.data.model.SupportTicketRecord
 import com.example.data.model.SupportTicketStatus
+import com.example.data.model.WalletTransaction
 import com.example.data.model.filterCatalogProducts
 import com.example.data.repository.QuickKartRepository
 import com.example.util.NotificationHelper
@@ -44,6 +45,7 @@ enum class BottomTab(val route: String, val label: String) {
     HOME("home", "Home"),
     CART("cart", "Cart"),
     TRACK("track", "Track"),
+    ORDERS("orders", "Orders"),
     ACCOUNT("account", "Account")
 }
 
@@ -84,11 +86,17 @@ data class QuickKartUiState(
     val checkoutDraft: CheckoutDraft = CheckoutDraft(),
     val billBreakdown: BillBreakdown = BillBreakdown(0, 0, 0, 0, 0, 0, 0),
     val autoSimulateTracking: Boolean = false,
-    val supportTickets: List<SupportTicketRecord> = emptyList()
+    val supportTickets: List<SupportTicketRecord> = emptyList(),
+    val walletTransactions: List<WalletTransaction> = emptyList()
 ) {
     val totalCartCount: Int get() = cartItems.sumOf { it.quantity }
     val openSupportTicketCount: Int
         get() = supportTickets.count { it.status != SupportTicketStatus.RESOLVED }
+
+    val walletBalance: Int
+        get() = walletTransactions.fold(0) { acc, tx ->
+            if (tx.isCredit) acc + tx.amountInr else acc - tx.amountInr
+        }
 
     val favoriteProducts: List<Product>
         get() = products.filter { it.id in favoriteIds }
@@ -159,6 +167,7 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
             addressDao = db.savedAddressDao(),
             orderDao = db.orderDao(),
             supportTicketDao = db.supportTicketDao(),
+            walletDao = db.walletDao(),
             prefsManager = prefs
         )
         NotificationHelper.ensureChannel(application)
@@ -175,7 +184,8 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         val cart: List<CartItem>,
         val addresses: List<SavedAddress>,
         val orders: List<OrderRecord>,
-        val supportTickets: List<SupportTicketRecord>
+        val supportTickets: List<SupportTicketRecord>,
+        val walletTransactions: List<WalletTransaction>
     )
 
     private data class FilterStreams(
@@ -198,9 +208,11 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         repository.savedAddresses,
         repository.orders
     ) { prefs, favs, cart, addrs, orders ->
-        CoreStreams(prefs, favs, cart, addrs, orders, emptyList())
+        CoreStreams(prefs, favs, cart, addrs, orders, emptyList(), emptyList())
     }.combine(repository.supportTickets) { core, tickets ->
         core.copy(supportTickets = tickets)
+    }.combine(repository.walletTransactions) { core, wallet ->
+        core.copy(walletTransactions = wallet)
     }
 
     private val catalogFilterFlow = combine(
@@ -290,7 +302,8 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
             checkoutDraft = filters.checkout,
             billBreakdown = bill,
             autoSimulateTracking = filters.autoSim,
-            supportTickets = core.supportTickets
+            supportTickets = core.supportTickets,
+            walletTransactions = core.walletTransactions
         )
     }.stateIn(
         scope = viewModelScope,
@@ -373,9 +386,29 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch { repository.setSelectedNeighborhood(neighborhoodId) }
     }
 
-    fun signInWithPhone(phone: String, neighborhoodId: String) {
+    fun signInWithPhone(
+        phone: String,
+        neighborhoodId: String,
+        firstName: String = "Aarav",
+        lastName: String = "",
+        email: String = ""
+    ) {
+        val fullName = if (lastName.isNotBlank()) "${firstName.trim()} ${lastName.trim()}" else firstName.trim()
         viewModelScope.launch {
-            repository.signInWithPhone(phone, neighborhoodId)
+            repository.signInWithPhone(phone, neighborhoodId, fullName, email.trim())
+        }
+    }
+
+    fun updateUserProfile(firstName: String, lastName: String, email: String, phone: String? = null) {
+        val fullName = if (lastName.isNotBlank()) "${firstName.trim()} ${lastName.trim()}" else firstName.trim()
+        viewModelScope.launch {
+            repository.updateUserProfile(fullName, email.trim(), phone)
+        }
+    }
+
+    fun addWalletMoney(amountInr: Int) {
+        viewModelScope.launch {
+            repository.addMoneyToWallet(amountInr)
         }
     }
 
@@ -578,6 +611,11 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
     fun placeOrder(onOrderCreated: (OrderRecord) -> Unit) {
         val snapshot = uiState.value
         if (snapshot.cartItems.isEmpty()) return
+        if (snapshot.checkoutDraft.paymentMethod == PaymentMethod.WALLET &&
+            snapshot.walletBalance < snapshot.billBreakdown.grandTotal
+        ) {
+            return
+        }
 
         viewModelScope.launch {
             val neighborhood = snapshot.selectedNeighborhood ?: repository.neighborhoods.first()
@@ -637,6 +675,9 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
             )
 
             repository.saveOrder(newOrder)
+            if (draft.paymentMethod == PaymentMethod.WALLET) {
+                repository.debitWallet(bill.grandTotal, orderId)
+            }
             repository.clearCart()
             lastActiveOrderIdFlow.value = orderId
             lastNotifiedOrderId = orderId

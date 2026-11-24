@@ -13,6 +13,8 @@ import com.example.data.local.SeedData
 import com.example.data.local.SupportTicketDao
 import com.example.data.local.SupportTicketEntity
 import com.example.data.local.UserPreferences
+import com.example.data.local.WalletDao
+import com.example.data.local.WalletTransactionEntity
 import com.example.data.model.CartItem
 import com.example.data.model.Neighborhood
 import com.example.data.model.OrderLineItem
@@ -27,6 +29,7 @@ import com.example.data.model.SupportMessage
 import com.example.data.model.SupportResolutionOption
 import com.example.data.model.SupportTicketRecord
 import com.example.data.model.SupportTicketStatus
+import com.example.data.model.WalletTransaction
 import com.example.data.model.computeSupportRefundEstimate
 import com.example.data.model.generateSupportDeskReply
 import com.example.data.model.orderLineItemKey
@@ -43,6 +46,7 @@ class QuickKartRepository(
     private val addressDao: SavedAddressDao,
     private val orderDao: OrderDao,
     private val supportTicketDao: SupportTicketDao,
+    private val walletDao: WalletDao,
     private val prefsManager: PreferencesManager
 ) {
     val products: List<Product> = SeedData.products
@@ -76,6 +80,9 @@ class QuickKartRepository(
     val supportTickets: Flow<List<SupportTicketRecord>> = supportTicketDao.observeTickets()
         .map { list -> list.map { it.toDomain() } }
 
+    val walletTransactions: Flow<List<WalletTransaction>> = walletDao.observeTransactions()
+        .map { list -> list.map { it.toDomain() } }
+
     suspend fun ensureSeeded() {
         if (addressDao.count() == 0) {
             addressDao.insertAll(SeedData.savedAddresses.map { SavedAddressEntity.fromDomain(it) })
@@ -92,6 +99,60 @@ class QuickKartRepository(
                 SeedData.createSeededSupportTickets().map { SupportTicketEntity.fromDomain(it) }
             )
         }
+        if (walletDao.count() == 0) {
+            val now = System.currentTimeMillis()
+            val seededWallet = listOf(
+                WalletTransactionEntity(
+                    id = "WTX-INIT-101",
+                    title = "QuickKart Welcome Bonus",
+                    subtitle = "Instant signup promo credit",
+                    amountInr = 250,
+                    isCredit = true,
+                    createdAtMillis = now - 86400000L * 3
+                ),
+                WalletTransactionEntity(
+                    id = "WTX-INIT-102",
+                    title = "Instant Care Refund",
+                    subtitle = "Ref for missing item in #ORD-3021",
+                    amountInr = 120,
+                    isCredit = true,
+                    createdAtMillis = now - 86400000L * 2
+                ),
+                WalletTransactionEntity(
+                    id = "WTX-INIT-103",
+                    title = "Paid for Order #ORD-3012",
+                    subtitle = "Fresh bakery & organic milk",
+                    amountInr = 180,
+                    isCredit = false,
+                    createdAtMillis = now - 86400000L
+                )
+            )
+            walletDao.insertAll(seededWallet)
+        }
+    }
+
+    suspend fun addMoneyToWallet(amountInr: Int, note: String = "Added via UPI / Netbanking") {
+        val tx = WalletTransactionEntity(
+            id = "WTX-${System.currentTimeMillis()}-${Random.nextInt(100, 999)}",
+            title = "Money Added",
+            subtitle = note,
+            amountInr = amountInr,
+            isCredit = true,
+            createdAtMillis = System.currentTimeMillis()
+        )
+        walletDao.insert(tx)
+    }
+
+    suspend fun debitWallet(amountInr: Int, orderId: String) {
+        val tx = WalletTransactionEntity(
+            id = "WTX-${System.currentTimeMillis()}-${Random.nextInt(100, 999)}",
+            title = "Paid for Order #$orderId",
+            subtitle = "QuickKart 8-min grocery order",
+            amountInr = amountInr,
+            isCredit = false,
+            createdAtMillis = System.currentTimeMillis()
+        )
+        walletDao.insert(tx)
     }
 
     suspend fun toggleFavorite(productId: String) {
@@ -240,8 +301,16 @@ class QuickKartRepository(
     suspend fun setScreenZoomPercent(percent: Int) = prefsManager.setScreenZoomPercent(percent)
     suspend fun setSelectedNeighborhood(id: String) = prefsManager.setSelectedNeighborhood(id)
     suspend fun setSelectedAddressId(id: String) = prefsManager.setSelectedAddressId(id)
-    suspend fun signInWithPhone(phone: String, neighborhoodId: String) =
-        prefsManager.signInWithPhone(phone, neighborhoodId)
+    suspend fun signInWithPhone(
+        phone: String,
+        neighborhoodId: String,
+        name: String = "Aarav Sharma",
+        email: String = ""
+    ) = prefsManager.signInWithPhone(phone, neighborhoodId, name, email)
+
+    suspend fun updateUserProfile(name: String, email: String, phone: String? = null) =
+        prefsManager.updateUserProfile(name, email, phone)
+
     suspend fun signInAsGuest(neighborhoodId: String) =
         prefsManager.signInAsGuest(neighborhoodId)
     suspend fun signOut() = prefsManager.signOut()

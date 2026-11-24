@@ -78,7 +78,7 @@ fun LoginScreen(
     isDarkTheme: Boolean,
     onToggleTheme: (Boolean) -> Unit,
     onSelectNeighborhood: (String) -> Unit,
-    onSignInWithPhone: (String, String) -> Unit,
+    onSignInWithPhone: (phone: String, neighborhoodId: String, firstName: String, lastName: String, email: String) -> Unit,
     onContinueAsGuest: (String) -> Unit
 ) {
     val tokens = QuickKartThemeTokens.colors
@@ -87,6 +87,7 @@ fun LoginScreen(
     var otpSent by remember { mutableStateOf(false) }
     var otpCode by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+    var showProfileSetup by remember { mutableStateOf(false) }
 
     val activeNeighborhood = neighborhoods.find { it.id == selectedNeighborhoodId }
         ?: neighborhoods.first()
@@ -412,7 +413,7 @@ fun LoginScreen(
                                 }
                             } else {
                                 if (otpCode.length == 4) {
-                                    onSignInWithPhone("+91 $phoneNumber", activeNeighborhood.id)
+                                    showProfileSetup = true
                                 } else {
                                     errorMsg = "Enter the 4-digit OTP (e.g. 1234)."
                                 }
@@ -437,7 +438,7 @@ fun LoginScreen(
                             Spacer(Modifier.width(8.dp))
                         }
                         Text(
-                            text = if (otpSent) "Verify & Start Shopping" else "Send OTP",
+                            text = if (otpSent) "Verify & Complete Profile" else "Send OTP",
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
@@ -461,5 +462,21 @@ fun LoginScreen(
                 )
             }
         }
+    }
+
+    if (showProfileSetup) {
+        AccountSetupDialog(
+            initialPhone = "+91 $phoneNumber",
+            initialFirstName = "",
+            initialLastName = "",
+            initialEmail = "",
+            title = "Account Details",
+            subtitle = "Post-OTP verification: enter your minimum required details. Only First Name is mandatory; Last Name and Email are optional.",
+            onDismiss = { showProfileSetup = false },
+            onCompleteProfile = { firstName, lastName, email ->
+                showProfileSetup = false
+                onSignInWithPhone("+91 $phoneNumber", activeNeighborhood.id, firstName, lastName, email)
+            }
+        )
     }
 }

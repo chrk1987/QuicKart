@@ -123,6 +123,7 @@ data class ResolvedPinAddress(
 )
 
 enum class PaymentMethod(val label: String, val subtitle: String) {
+    WALLET("QuickKart Wallet", "Instant 1-tap pay • Zero failure"),
     UPI("UPI Instant", "GPay, PhonePe, Paytm • Zero fee"),
     CARD("Credit / Debit Card", "Visa, Mastercard, RuPay"),
     COD("Cash on Delivery", "Pay via cash or UPI QR at doorstep")
