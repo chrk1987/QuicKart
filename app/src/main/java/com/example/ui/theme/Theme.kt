@@ -72,8 +72,12 @@ private val DarkQuickKartColors = QuickKartColors(
 val LocalQuickKartColors = staticCompositionLocalOf { LightQuickKartColors }
 
 private val QuickKartLightScheme = lightColorScheme(
-    primary = ElectricYellow,
-    onPrimary = InkBlack,
+    // Material defaults (text-field labels/cursor, unstyled text buttons, checkboxes) use `primary`.
+    // Yellow is unreadable on white, so light mode uses ink; brand-yellow surfaces set their colors explicitly.
+    primary = InkBlack,
+    onPrimary = Color.White,
+    // Keep the brand's warm yellow tint on elevated surfaces (e.g. the cream bottom bar).
+    surfaceTint = ElectricYellow,
     primaryContainer = ElectricYellowSoft,
     onPrimaryContainer = InkBlack,
     secondary = DeliveryGreenDeep,

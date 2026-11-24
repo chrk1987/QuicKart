@@ -1,5 +1,19 @@
 package com.example.ui.screens
 
+import androidx.compose.material.icons.rounded.Shield
+
+import androidx.compose.material.icons.rounded.Info
+
+import com.example.ui.ThemeMode
+
+import androidx.compose.material.icons.rounded.LightMode
+
+import androidx.compose.foundation.layout.wrapContentHeight
+
+import androidx.compose.ui.semantics.Role
+
+import androidx.compose.foundation.selection.selectable
+
 import com.example.util.itemCountLabel
 import android.Manifest
 import android.os.Build
@@ -143,6 +157,9 @@ fun AccountHistoryScreen(
     onNavigateBack: () -> Unit = {},
     onLinkGoogleAccount: (googleEmail: String) -> Unit = {},
     onUnlinkGoogleAccount: () -> Unit = {},
+    onSelectThemeMode: (ThemeMode) -> Unit = {},
+    /** The theme actually shown (accounts for "System"). */
+    isDarkThemeActive: Boolean = uiState.preferences.isDarkTheme,
     promos: List<PromoCode> = emptyList(),
     onRedeemReferral: (code: String) -> String = { "" },
     onRemoveSavedPayments: () -> Unit = {}
@@ -695,7 +712,11 @@ fun AccountHistoryScreen(
                     iconTint = tokens.ink,
                     title = "Settings & Preferences",
                     summary = listOf(
-                        if (uiState.preferences.isDarkTheme) "Dark mode" else "Light mode",
+                        when {
+                            uiState.preferences.followSystemTheme -> "System theme"
+                            uiState.preferences.isDarkTheme -> "Dark mode"
+                            else -> "Light mode"
+                        },
                         "Zoom ${uiState.preferences.screenZoomPercent}%",
                         if (uiState.preferences.notificationsEnabled) "Alerts on" else "Alerts off"
                     ).joinToString(" • "),
@@ -713,34 +734,38 @@ fun AccountHistoryScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.DarkMode,
+                                imageVector = if (isDarkThemeActive) Icons.Rounded.DarkMode else Icons.Rounded.LightMode,
                                 contentDescription = null,
                                 tint = tokens.ink,
                                 modifier = Modifier.size(metrics.iconMedium)
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Dark Mode",
+                                    text = "Theme",
                                     style = MaterialTheme.typography.titleSmall,
                                     color = tokens.ink
                                 )
                                 Text(
-                                    text = "Switch between crisp Light & Dark UI",
+                                    text = "Light, Dark or follow your phone's setting",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = tokens.muted
                                 )
                             }
                         }
-                        Switch(
-                            checked = uiState.preferences.isDarkTheme,
-                            onCheckedChange = onToggleTheme,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = tokens.onBrandYellow,
-                                checkedTrackColor = tokens.brandYellow
-                            ),
-                            modifier = Modifier.testTag("settings_theme_switch")
-                        )
                     }
+                    // Single-choice theme selector (segmented, same chip style as the rest of the app).
+                    val selectedTheme = when {
+                        uiState.preferences.followSystemTheme -> ThemeMode.SYSTEM
+                        uiState.preferences.isDarkTheme -> ThemeMode.DARK
+                        else -> ThemeMode.LIGHT
+                    }
+                    SegmentedChoice(
+                        options = ThemeMode.entries,
+                        selected = selectedTheme,
+                        label = { it.label },
+                        testTagPrefix = "settings_theme",
+                        onSelect = onSelectThemeMode
+                    )
 
                     HorizontalDivider(color = tokens.border)
 
@@ -785,14 +810,22 @@ fun AccountHistoryScreen(
                             checked = uiState.preferences.notificationsEnabled,
                             onCheckedChange = onToggleNotifications,
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = tokens.deliveryGreenDeep
+                                // Brand "on": yellow track, black thumb.
+                                checkedThumbColor = tokens.onBrandYellow,
+                                checkedTrackColor = tokens.brandYellow,
+                                checkedBorderColor = tokens.brandYellow,
+                                // Clearly "off" (not disabled): outlined track with a solid muted thumb.
+                                uncheckedThumbColor = tokens.muted,
+                                uncheckedTrackColor = tokens.surfaceElevated,
+                                uncheckedBorderColor = tokens.muted
                             ),
                             modifier = Modifier.testTag("settings_notifications_switch")
                         )
                     }
 
+                    val alertsOn = uiState.preferences.notificationsEnabled
                     OutlinedButton(
+                        enabled = alertsOn,
                         onClick = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                                 !NotificationHelper.hasNotificationPermission(context)
@@ -819,6 +852,46 @@ fun AccountHistoryScreen(
                         Spacer(Modifier.width(8.dp))
                         Text("Send Test Notification")
                     }
+                    if (!alertsOn) {
+                        Text(
+                            text = "Turn on Order Alerts to send a test notification.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = tokens.muted,
+                            modifier = Modifier.testTag("test_notification_hint")
+                        )
+                    }
+                }
+            }
+
+            // About QuickKart
+            if (openSection == null || openSection == SECTION_ABOUT) item {
+                AccountParentItem(
+                    key = SECTION_ABOUT,
+                    icon = Icons.Rounded.Info,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
+                    title = "About QuickKart",
+                    summary = "Our story, version & contact",
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_ABOUT) }
+                ) {
+                    AboutQuickKartContent()
+                }
+            }
+
+            // Privacy Policy
+            if (openSection == null || openSection == SECTION_PRIVACY) item {
+                AccountParentItem(
+                    key = SECTION_PRIVACY,
+                    icon = Icons.Rounded.Shield,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
+                    title = "Privacy Policy",
+                    summary = "How we collect, use & protect your data",
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_PRIVACY) }
+                ) {
+                    PrivacyPolicyContent()
                 }
             }
 
@@ -926,6 +999,8 @@ private const val SECTION_ADDRESSES = "addresses"
 private const val SECTION_SUPPORT = "support"
 private const val SECTION_SETTINGS = "settings"
 private const val SECTION_REWARDS = "rewards"
+private const val SECTION_ABOUT = "about"
+private const val SECTION_PRIVACY = "privacy"
 
 private fun accountSectionTitle(section: String): String = when (section) {
     SECTION_PROFILE -> "Profile"
@@ -935,6 +1010,8 @@ private fun accountSectionTitle(section: String): String = when (section) {
     SECTION_SUPPORT -> "Help & Support"
     SECTION_SETTINGS -> "Settings & Preferences"
     SECTION_REWARDS -> "Offers & Rewards"
+    SECTION_ABOUT -> "About QuickKart"
+    SECTION_PRIVACY -> "Privacy Policy"
     else -> "Account"
 }
 
@@ -1352,7 +1429,17 @@ private fun SavedAddressRow(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Named text-size presets (replaces the slider, −/+ buttons and percentage chips). */
+private enum class ZoomPreset(val percent: Int, val label: String) {
+    COMPACT(85, "Compact"),
+    DEFAULT(DEFAULT_SCREEN_ZOOM_PERCENT, "Default"),
+    LARGE(115, "Large"),
+    EXTRA_LARGE(130, "Extra large")
+}
+
+private fun zoomLabel(percent: Int): String =
+    ZoomPreset.entries.firstOrNull { it.percent == percent }?.label ?: "Custom"
+
 @Composable
 private fun ScreenZoomControlSection(
     zoomPercent: Int,
@@ -1361,19 +1448,7 @@ private fun ScreenZoomControlSection(
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
-    var sliderValue by remember { mutableFloatStateOf(zoomPercent.toFloat()) }
-
-    LaunchedEffect(zoomPercent) {
-        sliderValue = zoomPercent.toFloat()
-    }
-
-    val currentStepPercent = ((sliderValue.roundToInt().coerceIn(MIN_SCREEN_ZOOM_PERCENT, MAX_SCREEN_ZOOM_PERCENT) + 2) / 5) * 5
-    val scaleLabel = when {
-        currentStepPercent < 100 -> "Compact"
-        currentStepPercent == 100 -> "Default"
-        currentStepPercent <= 115 -> "Large"
-        else -> "Extra Large"
-    }
+    val selectedPreset = ZoomPreset.entries.firstOrNull { it.percent == zoomPercent }
 
     Column(
         modifier = Modifier
@@ -1394,48 +1469,29 @@ private fun ScreenZoomControlSection(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Screen Zoom",
+                    text = "Text & Display Size",
                     style = MaterialTheme.typography.titleSmall,
                     color = tokens.ink
                 )
+                // Current value sits under the title so the heading never gets squeezed.
                 Text(
-                    text = "Scales fonts, icons & grid ($gridColumns cols on this display)",
+                    text = "${zoomLabel(zoomPercent)} ($zoomPercent%) • scales fonts, icons & grid",
                     style = MaterialTheme.typography.bodySmall,
-                    color = tokens.muted
-                )
-            }
-            Surface(
-                color = if (currentStepPercent == DEFAULT_SCREEN_ZOOM_PERCENT) {
-                    tokens.deliveryGreenSoft
-                } else {
-                    tokens.brandYellowSoft
-                },
-                shape = RoundedCornerShape(50),
-                border = BorderStroke(
-                    1.dp,
-                    if (currentStepPercent == DEFAULT_SCREEN_ZOOM_PERCENT) {
-                        tokens.deliveryGreen.copy(alpha = 0.45f)
-                    } else {
-                        tokens.brandYellow
-                    }
-                )
-            ) {
-                Text(
-                    text = "$currentStepPercent% • $scaleLabel",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (currentStepPercent == DEFAULT_SCREEN_ZOOM_PERCENT) {
-                        tokens.deliveryGreenDeep
-                    } else {
-                        tokens.ink
-                    },
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
-                        .testTag("screen_zoom_badge")
+                    color = tokens.muted,
+                    modifier = Modifier.testTag("screen_zoom_badge")
                 )
             }
         }
 
+        SegmentedChoice(
+            options = ZoomPreset.entries,
+            selected = selectedPreset,
+            label = { it.label },
+            testTagPrefix = "zoom_preset",
+            onSelect = { onZoomChange(it.percent) }
+        )
+
+        // Live preview of the chosen size.
         Surface(
             color = tokens.surfaceElevated,
             shape = RoundedCornerShape(12.dp),
@@ -1465,122 +1521,81 @@ private fun ScreenZoomControlSection(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Live UI Preview • Fresh A2 Milk",
+                        text = "Preview • Fresh A2 Milk",
                         style = MaterialTheme.typography.titleSmall,
                         color = tokens.ink
                     )
                     Text(
-                        text = "Icons ${metrics.iconMedium.value.roundToInt()}dp • Fonts scaled to $currentStepPercent%",
+                        text = "₹52 • 500 ml • Arrives in 8 mins",
                         style = MaterialTheme.typography.bodySmall,
                         color = tokens.muted
                     )
                 }
-                if (currentStepPercent != DEFAULT_SCREEN_ZOOM_PERCENT) {
-                    TextButton(
-                        onClick = {
-                            sliderValue = DEFAULT_SCREEN_ZOOM_PERCENT.toFloat()
-                            onZoomChange(DEFAULT_SCREEN_ZOOM_PERCENT)
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
-                        modifier = Modifier.testTag("reset_screen_zoom_button")
-                    ) {
-                        Text("Reset", fontWeight = FontWeight.Bold)
-                    }
-                }
             }
         }
+    }
+}
 
+/**
+ * Single-choice segmented control in the brand style: selected = yellow fill with black text,
+ * others = elevated surface. Used for Theme and Text size.
+ */
+@Composable
+private fun <T> SegmentedChoice(
+    options: List<T>,
+    selected: T?,
+    label: (T) -> String,
+    testTagPrefix: String,
+    onSelect: (T) -> Unit
+) {
+    val tokens = QuickKartThemeTokens.colors
+    // Four options don't fit one row on narrow / zoomed layouts: use a 2 x 2 grid there.
+    val perRow = if (options.size > 3 && QuickKartMetricsTokens.metrics.isNarrowPhone) 2 else options.size
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = tokens.surfaceElevated,
+        border = BorderStroke(1.dp, tokens.border),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+      Column(modifier = Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+       options.chunked(perRow).forEach { rowOptions ->
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            IconButton(
-                onClick = {
-                    val next = (zoomPercent - 5).coerceAtLeast(MIN_SCREEN_ZOOM_PERCENT)
-                    sliderValue = next.toFloat()
-                    onZoomChange(next)
-                },
-                enabled = zoomPercent > MIN_SCREEN_ZOOM_PERCENT,
-                modifier = Modifier
-                    .size(48.dp)
-                    .testTag("zoom_decrease_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Remove,
-                    contentDescription = "Decrease screen zoom",
-                    tint = if (zoomPercent > MIN_SCREEN_ZOOM_PERCENT) tokens.ink else tokens.muted,
-                    modifier = Modifier.size(metrics.iconMedium)
-                )
-            }
-
-            Slider(
-                value = sliderValue,
-                onValueChange = { raw ->
-                    sliderValue = raw
-                    val snapped = ((raw.roundToInt().coerceIn(MIN_SCREEN_ZOOM_PERCENT, MAX_SCREEN_ZOOM_PERCENT) + 2) / 5) * 5
-                    if (snapped != zoomPercent) {
-                        onZoomChange(snapped)
-                    }
-                },
-                valueRange = MIN_SCREEN_ZOOM_PERCENT.toFloat()..MAX_SCREEN_ZOOM_PERCENT.toFloat(),
-                steps = ((MAX_SCREEN_ZOOM_PERCENT - MIN_SCREEN_ZOOM_PERCENT) / 5) - 1,
-                colors = SliderDefaults.colors(
-                    thumbColor = tokens.brandYellow,
-                    activeTrackColor = tokens.deliveryGreenDeep,
-                    inactiveTrackColor = tokens.border
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("screen_zoom_slider")
-            )
-
-            IconButton(
-                onClick = {
-                    val next = (zoomPercent + 5).coerceAtMost(MAX_SCREEN_ZOOM_PERCENT)
-                    sliderValue = next.toFloat()
-                    onZoomChange(next)
-                },
-                enabled = zoomPercent < MAX_SCREEN_ZOOM_PERCENT,
-                modifier = Modifier
-                    .size(48.dp)
-                    .testTag("zoom_increase_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = "Increase screen zoom",
-                    tint = if (zoomPercent < MAX_SCREEN_ZOOM_PERCENT) tokens.ink else tokens.muted,
-                    modifier = Modifier.size(metrics.iconMedium)
-                )
-            }
-        }
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(85, 100, 115, 130).forEach { preset ->
-                val selected = zoomPercent == preset
+            rowOptions.forEach { option ->
+                val isSelected = option == selected
                 Surface(
-                    shape = RoundedCornerShape(50),
-                    color = if (selected) tokens.ink else tokens.surfaceElevated,
-                    border = BorderStroke(1.dp, if (selected) tokens.ink else tokens.border),
+                    shape = RoundedCornerShape(10.dp),
+                    // Brand selection style (same as bottom-bar / tip chips): yellow fill, black text.
+                    color = if (isSelected) tokens.brandYellow else Color.Transparent,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .clickable {
-                            sliderValue = preset.toFloat()
-                            onZoomChange(preset)
-                        }
-                        .testTag("zoom_preset_$preset")
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .selectable(
+                            selected = isSelected,
+                            role = Role.RadioButton,
+                            onClick = { onSelect(option) }
+                        )
+                        .testTag("${testTagPrefix}_${label(option).lowercase().replace(' ', '_')}")
                 ) {
                     Text(
-                        text = if (preset == 100) "100% Default" else "$preset%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (selected) tokens.background else tokens.ink,
-                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
+                        text = label(option),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isSelected) tokens.onBrandYellow else tokens.ink,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = 40.dp)
+                            .wrapContentHeight()
+                            .padding(horizontal = 4.dp, vertical = 10.dp)
                     )
                 }
             }
         }
+       }
+      }
     }
 }

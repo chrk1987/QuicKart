@@ -29,6 +29,12 @@ import com.example.data.model.WalletTransaction
 import com.example.data.model.filterCatalogProducts
 import com.example.data.repository.QuickKartRepository
 import com.example.util.NotificationHelper
+import com.example.util.cancellationRefundInr
+import com.example.util.cardLast4ToStore
+import com.example.util.isCancellable
+import com.example.util.nearestLockedOffer
+import com.example.util.pickBestOffer
+import com.example.util.referralCodeError
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +46,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
+
+enum class ThemeMode(val label: String) { LIGHT("Light"), DARK("Dark"), SYSTEM("System") }
 
 const val REFERRAL_REWARD_INR = 50
 
@@ -384,6 +392,17 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch { repository.setDarkTheme(enabled) }
     }
 
+    /** Light, Dark or follow the phone's setting. */
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            when (mode) {
+                ThemeMode.LIGHT -> repository.setDarkTheme(false)
+                ThemeMode.DARK -> repository.setDarkTheme(true)
+                ThemeMode.SYSTEM -> repository.setFollowSystemTheme()
+            }
+        }
+    }
+
     fun toggleNotifications(enabled: Boolean) {
         viewModelScope.launch { repository.setNotificationsEnabled(enabled) }
     }
@@ -588,11 +607,9 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
     /** Applies the eligible offer with the biggest discount for the current basket. */
     fun applyBestOffer() {
         val itemTotal = uiState.value.billBreakdown.itemTotal
-        val best = repository.availablePromos
-            .filter { itemTotal >= it.minOrderInr }
-            .maxByOrNull { it.discountInr }
+        val best = pickBestOffer(repository.availablePromos, itemTotal)
         if (best == null) {
-            val nearest = repository.availablePromos.minByOrNull { it.minOrderInr }
+            val nearest = nearestLockedOffer(repository.availablePromos, itemTotal)
             checkoutDraftFlow.update {
                 it.copy(
                     appliedPromo = null,
@@ -621,7 +638,9 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun savePaymentMethod(upiId: String?, cardLast4: String?) {
-        viewModelScope.launch { repository.savePaymentMethod(upiId, cardLast4) }
+        // Defensive: never persist more than a card's last 4 digits.
+        val safeLast4 = cardLast4?.let { cardLast4ToStore(it) }
+        viewModelScope.launch { repository.savePaymentMethod(upiId?.trim(), safeLast4) }
     }
 
     fun removeSavedPaymentMethods() {
@@ -634,10 +653,9 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
      */
     fun redeemReferralCode(code: String, ownCode: String): String {
         val clean = code.trim().uppercase()
+        val error = referralCodeError(clean, ownCode, uiState.value.preferences.referralRedeemed)
         return when {
-            uiState.value.preferences.referralRedeemed -> "You've already redeemed a referral code."
-            clean == ownCode -> "You can't use your own referral code."
-            !Regex("^QK[A-Z0-9]{4,}$").matches(clean) -> "Enter a valid code, e.g. QKFRIEND50."
+            error != null -> error
             else -> {
                 viewModelScope.launch {
                     repository.creditWallet("Referral Reward", "Code $clean • Welcome reward", REFERRAL_REWARD_INR)
@@ -650,24 +668,25 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
 
     /** Cancels an order that is still CONFIRMED; prepaid amounts are refunded to the Wallet. */
     fun cancelOrder(order: OrderRecord, onDone: (String) -> Unit) {
-        if (order.stage != OrderStage.CONFIRMED) {
+        if (!isCancellable(order)) {
             onDone("This order is already being packed and can't be cancelled.")
             return
         }
         viewModelScope.launch {
             autoSimFlow.value = false
             repository.deleteOrder(order.orderId)
-            val refunded = order.paymentMethod != PaymentMethod.COD
+            val refundInr = cancellationRefundInr(order)
+            val refunded = refundInr > 0
             if (refunded) {
                 repository.creditWallet(
                     "Refund for #${order.orderId}",
                     "Order cancelled • Instant refund to Wallet",
-                    order.totalPaid
+                    refundInr
                 )
             }
             if (lastActiveOrderIdFlow.value == order.orderId) lastActiveOrderIdFlow.value = null
             onDone(
-                if (refunded) "Order ${order.orderId} cancelled. ₹${order.totalPaid} refunded to Wallet."
+                if (refunded) "Order ${order.orderId} cancelled. ₹$refundInr refunded to Wallet."
                 else "Order ${order.orderId} cancelled."
             )
         }

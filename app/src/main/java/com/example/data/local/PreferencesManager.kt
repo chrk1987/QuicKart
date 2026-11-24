@@ -38,7 +38,9 @@ data class UserPreferences(
     /** Saved payment methods (prototype: UPI ID and card last 4 digits only, never full card data). */
     val savedUpiId: String = "",
     val savedCardLast4: String = "",
-    val referralRedeemed: Boolean = false
+    val referralRedeemed: Boolean = false,
+    /** When true the app follows the phone's light/dark setting and [isDarkTheme] is ignored. */
+    val followSystemTheme: Boolean = false
 )
 
 const val MAX_RECENT_SEARCHES = 6
@@ -67,6 +69,7 @@ class PreferencesManager(private val context: Context) {
         val SAVED_UPI_ID = stringPreferencesKey("saved_upi_id")
         val SAVED_CARD_LAST4 = stringPreferencesKey("saved_card_last4")
         val REFERRAL_REDEEMED = booleanPreferencesKey("referral_redeemed")
+        val FOLLOW_SYSTEM_THEME = booleanPreferencesKey("follow_system_theme")
     }
 
     private val recentSeparator = "\u001F"
@@ -91,18 +94,16 @@ class PreferencesManager(private val context: Context) {
             inboxLastSeenMillis = prefs[Keys.INBOX_LAST_SEEN] ?: 0L,
             savedUpiId = prefs[Keys.SAVED_UPI_ID] ?: "",
             savedCardLast4 = prefs[Keys.SAVED_CARD_LAST4] ?: "",
-            referralRedeemed = prefs[Keys.REFERRAL_REDEEMED] ?: false
+            referralRedeemed = prefs[Keys.REFERRAL_REDEEMED] ?: false,
+            followSystemTheme = prefs[Keys.FOLLOW_SYSTEM_THEME] ?: false,
         )
     }
 
     suspend fun addRecentSearch(query: String) {
-        val clean = query.trim()
-        if (clean.length < 2) return
+        if (query.trim().length < 2) return
         context.quickKartDataStore.edit {
             val current = it[Keys.RECENT_SEARCHES]?.split(recentSeparator).orEmpty()
-            val updated = (listOf(clean) + current.filterNot { q -> q.equals(clean, ignoreCase = true) })
-                .filter { q -> q.isNotBlank() }
-                .take(MAX_RECENT_SEARCHES)
+            val updated = com.example.util.updatedRecentSearches(current, query, MAX_RECENT_SEARCHES)
             it[Keys.RECENT_SEARCHES] = updated.joinToString(recentSeparator)
         }
     }
@@ -133,8 +134,16 @@ class PreferencesManager(private val context: Context) {
         context.quickKartDataStore.edit { it[Keys.REFERRAL_REDEEMED] = true }
     }
 
+    /** Explicit Light/Dark choice (stops following the system theme). */
     suspend fun setDarkTheme(enabled: Boolean) {
-        context.quickKartDataStore.edit { it[Keys.IS_DARK_THEME] = enabled }
+        context.quickKartDataStore.edit {
+            it[Keys.IS_DARK_THEME] = enabled
+            it[Keys.FOLLOW_SYSTEM_THEME] = false
+        }
+    }
+
+    suspend fun setFollowSystemTheme() {
+        context.quickKartDataStore.edit { it[Keys.FOLLOW_SYSTEM_THEME] = true }
     }
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {

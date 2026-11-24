@@ -1,5 +1,11 @@
 package com.example.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
+
+import androidx.compose.foundation.layout.navigationBars
+
+import androidx.compose.foundation.layout.asPaddingValues
+
 import com.example.ui.screens.LocalSavedPayments
 import com.example.ui.screens.SavedPayments
 
@@ -111,10 +117,11 @@ fun QuickKartApp(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Status/navigation bar icons follow the app's own Light/Dark setting (not the phone's),
-    // with transparent bars so no grey scrim is drawn over the app.
+    // Effective theme: the user's Light/Dark choice, or the phone's setting when "System" is chosen.
+    // Status/navigation bar icons follow it, with transparent bars so no grey scrim is drawn.
     val activity = LocalContext.current as? ComponentActivity
-    val isDarkTheme = uiState.preferences.isDarkTheme
+    val systemDark = isSystemInDarkTheme()
+    val isDarkTheme = if (uiState.preferences.followSystemTheme) systemDark else uiState.preferences.isDarkTheme
     DisposableEffect(activity, isDarkTheme) {
         val barStyle = if (isDarkTheme) {
             SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
@@ -126,7 +133,7 @@ fun QuickKartApp(
     }
 
     QuickKartTheme(
-        darkTheme = uiState.preferences.isDarkTheme,
+        darkTheme = isDarkTheme,
         screenZoomPercent = uiState.preferences.screenZoomPercent
     ) {
         val tokens = QuickKartThemeTokens.colors
@@ -195,7 +202,7 @@ fun QuickKartApp(
                     LoginScreen(
                         neighborhoods = uiState.neighborhoods,
                         selectedNeighborhoodId = uiState.preferences.selectedNeighborhoodId,
-                        isDarkTheme = uiState.preferences.isDarkTheme,
+                        isDarkTheme = isDarkTheme,
                         onToggleTheme = viewModel::toggleDarkTheme,
                         onSelectNeighborhood = viewModel::selectNeighborhood,
                         onSignInWithPhone = { phone, nId, fName, lName, email ->
@@ -284,9 +291,12 @@ fun QuickKartApp(
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                 bottomBar = {
                     if (showTopLevelNav && !useNavRail) {
+                        // Compact bar: 64dp instead of Material's 80dp so icons sit lower with less empty space.
+                        val navBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                         NavigationBar(
                             containerColor = tokens.surface,
-                            tonalElevation = 4.dp
+                            tonalElevation = 4.dp,
+                            modifier = Modifier.height(64.dp + navBarInset)
                         ) {
                             visibleTabs.forEach { tab ->
                                 val selected = currentRoute == tab.route
@@ -398,6 +408,8 @@ fun QuickKartApp(
                             onShowMessage = { msg -> showToast(msg) },
                             onLinkGoogleAccount = viewModel::linkGoogleAccount,
                             onUnlinkGoogleAccount = viewModel::unlinkGoogleAccount,
+                            onSelectThemeMode = viewModel::setThemeMode,
+                            isDarkThemeActive = isDarkTheme,
                             promos = viewModel.availablePromos,
                             onRedeemReferral = { code ->
                                 viewModel.redeemReferralCode(code, referralCodeFor(uiState.preferences.userPhone))

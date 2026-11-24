@@ -322,6 +322,7 @@ class QuickKartRepository(
     }
 
     suspend fun setDarkTheme(enabled: Boolean) = prefsManager.setDarkTheme(enabled)
+    suspend fun setFollowSystemTheme() = prefsManager.setFollowSystemTheme()
     suspend fun setNotificationsEnabled(enabled: Boolean) = prefsManager.setNotificationsEnabled(enabled)
     suspend fun setScreenZoomPercent(percent: Int) = prefsManager.setScreenZoomPercent(percent)
     suspend fun setSelectedNeighborhood(id: String) = prefsManager.setSelectedNeighborhood(id)

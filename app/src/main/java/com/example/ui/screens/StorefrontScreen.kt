@@ -1,5 +1,13 @@
 package com.example.ui.screens
 
+
+
+import androidx.compose.ui.unit.sp
+
+import androidx.compose.foundation.border
+
+import androidx.compose.foundation.layout.offset
+
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.onFocusChanged
@@ -207,7 +215,9 @@ fun StorefrontScreen(
                                 Text(
                                     text = "QuickKart",
                                     style = MaterialTheme.typography.titleLarge,
-                                    color = tokens.ink
+                                    color = tokens.ink,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Box {
                                     Row(
@@ -220,11 +230,13 @@ fun StorefrontScreen(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         Text(
-                                            text = activeNeighborhood?.let {
-                                                "${it.name} • ${it.etaMinutes} mins"
-                                            } ?: "Select Area",
+                                            // ETA is shown in the "N MIN" pill next to the header icons.
+                                            text = activeNeighborhood?.name ?: "Select Area",
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = tokens.deliveryGreenDeep
+                                            color = tokens.deliveryGreenDeep,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
                                         Icon(
                                             imageVector = Icons.Rounded.KeyboardArrowDown,
@@ -281,63 +293,27 @@ fun StorefrontScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            // Icons sit flush together as one cluster; small gap before the ETA pill.
+                            horizontalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
                             val unread = unreadInboxCount(uiState)
-                            IconButton(
+                            HeaderIconWithBadge(
+                                icon = Icons.Rounded.Notifications,
+                                contentDescription = "Notifications, $unread unread",
+                                tint = tokens.ink,
+                                count = unread,
                                 onClick = { showInbox = true },
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag("open_inbox_button")
-                            ) {
-                                BadgedBox(
-                                    badge = {
-                                        if (unread > 0) {
-                                            Badge(containerColor = tokens.alertRed, contentColor = Color.White) {
-                                                Text(if (unread > 9) "9+" else unread.toString())
-                                            }
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Notifications,
-                                        contentDescription = "Notifications, $unread unread",
-                                        tint = tokens.ink,
-                                        modifier = Modifier.size(metrics.iconMedium)
-                                    )
-                                }
-                            }
-
-                            IconButton(
+                                testTag = "open_inbox_button"
+                            )
+                            HeaderIconWithBadge(
+                                icon = if (uiState.favoriteIds.isNotEmpty()) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = "Open Saved Favorites Wishlist",
+                                tint = if (uiState.favoriteIds.isNotEmpty()) tokens.alertRed else tokens.ink,
+                                count = uiState.favoriteIds.size,
                                 onClick = { showWishlistSheet = true },
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag("open_wishlist_button")
-                            ) {
-                                BadgedBox(
-                                    badge = {
-                                        if (uiState.favoriteIds.isNotEmpty()) {
-                                            Badge(
-                                                containerColor = tokens.alertRed,
-                                                contentColor = Color.White
-                                            ) {
-                                                Text(uiState.favoriteIds.size.toString())
-                                            }
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = if (uiState.favoriteIds.isNotEmpty()) {
-                                            Icons.Rounded.Favorite
-                                        } else {
-                                            Icons.Rounded.FavoriteBorder
-                                        },
-                                        contentDescription = "Open Saved Favorites Wishlist",
-                                        tint = if (uiState.favoriteIds.isNotEmpty()) tokens.alertRed else tokens.ink,
-                                        modifier = Modifier.size(metrics.iconMedium)
-                                    )
-                                }
-                            }
+                                testTag = "open_wishlist_button"
+                            )
+                            Spacer(Modifier.width(4.dp))
 
                             Surface(
                                 color = tokens.brandYellowSoft,
@@ -1364,6 +1340,59 @@ private fun ProductGridCard(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Header icon (48dp touch target) with a compact count badge on the icon's top-right corner.
+ * The badge stays inside the touch target so it is never clipped, and a surface-coloured ring
+ * keeps it readable on top of coloured icons (e.g. the red wishlist heart).
+ */
+@Composable
+private fun HeaderIconWithBadge(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    tint: Color,
+    count: Int,
+    onClick: () -> Unit,
+    testTag: String
+) {
+    val tokens = QuickKartThemeTokens.colors
+    val iconSize = QuickKartMetricsTokens.metrics.iconMedium
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .testTag(testTag),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(iconSize)
+        )
+        if (count > 0) {
+            Box(
+                modifier = Modifier
+                    // Centre of the badge on the icon's top-right corner.
+                    .offset(x = iconSize / 2, y = -(iconSize / 2))
+                    .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+                    .background(tokens.alertRed, RoundedCornerShape(50))
+                    .border(1.5.dp, tokens.surface, RoundedCornerShape(50))
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (count > 9) "9+" else count.toString(),
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    lineHeight = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
