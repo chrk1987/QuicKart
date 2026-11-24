@@ -88,6 +88,10 @@ import com.example.data.local.SIGN_IN_GOOGLE
 import com.example.data.local.SIGN_IN_GUEST
 import com.example.data.model.OrderStage
 import com.example.data.model.WalletTransaction
+import com.example.data.model.PromoCode
+import com.example.ui.REFERRAL_REWARD_INR
+import com.example.ui.referralCodeFor
+import androidx.compose.material.icons.rounded.CardGiftcard
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import com.example.data.model.SavedAddress
 import com.example.ui.QuickKartUiState
@@ -138,7 +142,10 @@ fun AccountHistoryScreen(
     onOpenSection: (String) -> Unit = {},
     onNavigateBack: () -> Unit = {},
     onLinkGoogleAccount: (googleEmail: String) -> Unit = {},
-    onUnlinkGoogleAccount: () -> Unit = {}
+    onUnlinkGoogleAccount: () -> Unit = {},
+    promos: List<PromoCode> = emptyList(),
+    onRedeemReferral: (code: String) -> String = { "" },
+    onRemoveSavedPayments: () -> Unit = {}
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
@@ -417,6 +424,22 @@ fun AccountHistoryScreen(
                         }
                     }
 
+                    val savedUpi = uiState.preferences.savedUpiId
+                    val savedCard = uiState.preferences.savedCardLast4
+                    if (savedUpi.isNotBlank() || savedCard.isNotBlank()) {
+                        ChildGroupLabel("Saved payment methods")
+                        if (savedUpi.isNotBlank()) AccountDetailRow("UPI ID", savedUpi)
+                        if (savedCard.isNotBlank()) AccountDetailRow("Card", "•••• $savedCard")
+                        TextButton(
+                            onClick = {
+                                onRemoveSavedPayments()
+                                onShowMessage("Saved payment methods removed")
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = tokens.alertRed),
+                            modifier = Modifier.testTag("remove_saved_payments_button")
+                        ) { Text("Remove saved methods", fontWeight = FontWeight.Bold) }
+                    }
+
                     ChildGroupLabel("Recent transactions")
                     val recentTransactions = uiState.walletTransactions
                         .sortedByDescending { it.createdAtMillis }
@@ -482,6 +505,28 @@ fun AccountHistoryScreen(
                             Text("Passbook", style = MaterialTheme.typography.labelMedium, color = tokens.ink)
                         }
                     }
+                }
+            }
+
+            // Offers & Rewards (promo codes + referral)
+            if (!uiState.preferences.isGuest && (openSection == null || openSection == SECTION_REWARDS)) item {
+                AccountParentItem(
+                    key = SECTION_REWARDS,
+                    icon = Icons.Rounded.CardGiftcard,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
+                    title = "Offers & Rewards",
+                    summary = "${promos.size} offers • Invite friends, get ₹$REFERRAL_REWARD_INR",
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_REWARDS) }
+                ) {
+                    OffersAndRewardsContent(
+                        promos = promos,
+                        referralCode = referralCodeFor(uiState.preferences.userPhone),
+                        referralRedeemed = uiState.preferences.referralRedeemed,
+                        onRedeemReferral = onRedeemReferral,
+                        onShowMessage = onShowMessage
+                    )
                 }
             }
 
@@ -880,6 +925,7 @@ private const val SECTION_ORDERS = "orders"
 private const val SECTION_ADDRESSES = "addresses"
 private const val SECTION_SUPPORT = "support"
 private const val SECTION_SETTINGS = "settings"
+private const val SECTION_REWARDS = "rewards"
 
 private fun accountSectionTitle(section: String): String = when (section) {
     SECTION_PROFILE -> "Profile"
@@ -888,6 +934,7 @@ private fun accountSectionTitle(section: String): String = when (section) {
     SECTION_ADDRESSES -> "Saved Addresses"
     SECTION_SUPPORT -> "Help & Support"
     SECTION_SETTINGS -> "Settings & Preferences"
+    SECTION_REWARDS -> "Offers & Rewards"
     else -> "Account"
 }
 

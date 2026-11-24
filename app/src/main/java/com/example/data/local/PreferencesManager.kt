@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -29,8 +30,18 @@ data class UserPreferences(
     /** How the user signed in: [SIGN_IN_PHONE], [SIGN_IN_GOOGLE] or [SIGN_IN_GUEST]. */
     val signInMethod: String = SIGN_IN_PHONE,
     /** Google account linked to this profile (set by Google sign-in or "Link Google account"). */
-    val linkedGoogleEmail: String = ""
+    val linkedGoogleEmail: String = "",
+    /** Most recent first, max [MAX_RECENT_SEARCHES]. */
+    val recentSearches: List<String> = emptyList(),
+    /** Notifications newer than this are shown as unread in the inbox. */
+    val inboxLastSeenMillis: Long = 0L,
+    /** Saved payment methods (prototype: UPI ID and card last 4 digits only, never full card data). */
+    val savedUpiId: String = "",
+    val savedCardLast4: String = "",
+    val referralRedeemed: Boolean = false
 )
+
+const val MAX_RECENT_SEARCHES = 6
 
 const val SIGN_IN_PHONE = "phone"
 const val SIGN_IN_GOOGLE = "google"
@@ -51,7 +62,14 @@ class PreferencesManager(private val context: Context) {
         val SELECTED_ADDRESS_ID = stringPreferencesKey("selected_address_id")
         val SIGN_IN_METHOD = stringPreferencesKey("sign_in_method")
         val LINKED_GOOGLE_EMAIL = stringPreferencesKey("linked_google_email")
+        val RECENT_SEARCHES = stringPreferencesKey("recent_searches")
+        val INBOX_LAST_SEEN = longPreferencesKey("inbox_last_seen")
+        val SAVED_UPI_ID = stringPreferencesKey("saved_upi_id")
+        val SAVED_CARD_LAST4 = stringPreferencesKey("saved_card_last4")
+        val REFERRAL_REDEEMED = booleanPreferencesKey("referral_redeemed")
     }
+
+    private val recentSeparator = "\u001F"
 
     val preferencesFlow: Flow<UserPreferences> = context.quickKartDataStore.data.map { prefs ->
         UserPreferences(
@@ -67,8 +85,52 @@ class PreferencesManager(private val context: Context) {
             selectedAddressId = prefs[Keys.SELECTED_ADDRESS_ID] ?: "addr_home",
             signInMethod = prefs[Keys.SIGN_IN_METHOD]
                 ?: if (prefs[Keys.IS_GUEST] == true) SIGN_IN_GUEST else SIGN_IN_PHONE,
-            linkedGoogleEmail = prefs[Keys.LINKED_GOOGLE_EMAIL] ?: ""
+            linkedGoogleEmail = prefs[Keys.LINKED_GOOGLE_EMAIL] ?: "",
+            recentSearches = prefs[Keys.RECENT_SEARCHES]
+                ?.split(recentSeparator)?.filter { it.isNotBlank() }.orEmpty(),
+            inboxLastSeenMillis = prefs[Keys.INBOX_LAST_SEEN] ?: 0L,
+            savedUpiId = prefs[Keys.SAVED_UPI_ID] ?: "",
+            savedCardLast4 = prefs[Keys.SAVED_CARD_LAST4] ?: "",
+            referralRedeemed = prefs[Keys.REFERRAL_REDEEMED] ?: false
         )
+    }
+
+    suspend fun addRecentSearch(query: String) {
+        val clean = query.trim()
+        if (clean.length < 2) return
+        context.quickKartDataStore.edit {
+            val current = it[Keys.RECENT_SEARCHES]?.split(recentSeparator).orEmpty()
+            val updated = (listOf(clean) + current.filterNot { q -> q.equals(clean, ignoreCase = true) })
+                .filter { q -> q.isNotBlank() }
+                .take(MAX_RECENT_SEARCHES)
+            it[Keys.RECENT_SEARCHES] = updated.joinToString(recentSeparator)
+        }
+    }
+
+    suspend fun clearRecentSearches() {
+        context.quickKartDataStore.edit { it[Keys.RECENT_SEARCHES] = "" }
+    }
+
+    suspend fun markInboxSeen(millis: Long) {
+        context.quickKartDataStore.edit { it[Keys.INBOX_LAST_SEEN] = millis }
+    }
+
+    suspend fun savePaymentMethod(upiId: String?, cardLast4: String?) {
+        context.quickKartDataStore.edit {
+            if (!upiId.isNullOrBlank()) it[Keys.SAVED_UPI_ID] = upiId
+            if (!cardLast4.isNullOrBlank()) it[Keys.SAVED_CARD_LAST4] = cardLast4
+        }
+    }
+
+    suspend fun removeSavedPaymentMethods() {
+        context.quickKartDataStore.edit {
+            it[Keys.SAVED_UPI_ID] = ""
+            it[Keys.SAVED_CARD_LAST4] = ""
+        }
+    }
+
+    suspend fun setReferralRedeemed() {
+        context.quickKartDataStore.edit { it[Keys.REFERRAL_REDEEMED] = true }
     }
 
     suspend fun setDarkTheme(enabled: Boolean) {
@@ -153,6 +215,8 @@ class PreferencesManager(private val context: Context) {
             it[Keys.USER_PHONE] = ""
             it[Keys.USER_EMAIL] = ""
             it[Keys.LINKED_GOOGLE_EMAIL] = ""
+            it[Keys.SAVED_UPI_ID] = ""
+            it[Keys.SAVED_CARD_LAST4] = ""
         }
     }
 }

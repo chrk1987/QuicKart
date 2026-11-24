@@ -41,6 +41,16 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
+const val REFERRAL_REWARD_INR = 50
+
+/** Stable, shareable referral code derived from the user's phone (prototype). */
+fun referralCodeFor(phone: String): String {
+    val digits = phone.filter { it.isDigit() }.takeLast(4).ifBlank { "0000" }
+    return "QK$digits${if (digits.sum() % 2 == 0) "FR" else "GO"}"
+}
+
+private fun String.sum(): Int = sumOf { it.digitToIntOrNull() ?: 0 }
+
 enum class BottomTab(val route: String, val label: String) {
     HOME("home", "Home"),
     CART("cart", "Cart"),
@@ -572,6 +582,94 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
                     promoMessage = "${match.code} applied! Saved ₹${match.discountInr}"
                 )
             }
+        }
+    }
+
+    /** Applies the eligible offer with the biggest discount for the current basket. */
+    fun applyBestOffer() {
+        val itemTotal = uiState.value.billBreakdown.itemTotal
+        val best = repository.availablePromos
+            .filter { itemTotal >= it.minOrderInr }
+            .maxByOrNull { it.discountInr }
+        if (best == null) {
+            val nearest = repository.availablePromos.minByOrNull { it.minOrderInr }
+            checkoutDraftFlow.update {
+                it.copy(
+                    appliedPromo = null,
+                    promoMessage = nearest?.let { p ->
+                        "No offer unlocked yet. Add ₹${p.minOrderInr - itemTotal} more for ${p.code}."
+                    } ?: "No offers available right now."
+                )
+            }
+        } else {
+            applyPromoCode(best.code)
+        }
+    }
+
+    val availablePromos get() = repository.availablePromos
+
+    fun addRecentSearch(query: String) {
+        viewModelScope.launch { repository.addRecentSearch(query) }
+    }
+
+    fun clearRecentSearches() {
+        viewModelScope.launch { repository.clearRecentSearches() }
+    }
+
+    fun markInboxSeen() {
+        viewModelScope.launch { repository.markInboxSeen(System.currentTimeMillis()) }
+    }
+
+    fun savePaymentMethod(upiId: String?, cardLast4: String?) {
+        viewModelScope.launch { repository.savePaymentMethod(upiId, cardLast4) }
+    }
+
+    fun removeSavedPaymentMethods() {
+        viewModelScope.launch { repository.removeSavedPaymentMethods() }
+    }
+
+    /**
+     * Prototype referral: any code starting with "QK" (not the user's own) credits ₹50 once.
+     * Returns a message for the UI.
+     */
+    fun redeemReferralCode(code: String, ownCode: String): String {
+        val clean = code.trim().uppercase()
+        return when {
+            uiState.value.preferences.referralRedeemed -> "You've already redeemed a referral code."
+            clean == ownCode -> "You can't use your own referral code."
+            !Regex("^QK[A-Z0-9]{4,}$").matches(clean) -> "Enter a valid code, e.g. QKFRIEND50."
+            else -> {
+                viewModelScope.launch {
+                    repository.creditWallet("Referral Reward", "Code $clean • Welcome reward", REFERRAL_REWARD_INR)
+                    repository.setReferralRedeemed()
+                }
+                "₹$REFERRAL_REWARD_INR added to your Wallet!"
+            }
+        }
+    }
+
+    /** Cancels an order that is still CONFIRMED; prepaid amounts are refunded to the Wallet. */
+    fun cancelOrder(order: OrderRecord, onDone: (String) -> Unit) {
+        if (order.stage != OrderStage.CONFIRMED) {
+            onDone("This order is already being packed and can't be cancelled.")
+            return
+        }
+        viewModelScope.launch {
+            autoSimFlow.value = false
+            repository.deleteOrder(order.orderId)
+            val refunded = order.paymentMethod != PaymentMethod.COD
+            if (refunded) {
+                repository.creditWallet(
+                    "Refund for #${order.orderId}",
+                    "Order cancelled • Instant refund to Wallet",
+                    order.totalPaid
+                )
+            }
+            if (lastActiveOrderIdFlow.value == order.orderId) lastActiveOrderIdFlow.value = null
+            onDone(
+                if (refunded) "Order ${order.orderId} cancelled. ₹${order.totalPaid} refunded to Wallet."
+                else "Order ${order.orderId} cancelled."
+            )
         }
     }
 

@@ -1,5 +1,8 @@
 package com.example.ui
 
+import com.example.ui.screens.LocalSavedPayments
+import com.example.ui.screens.SavedPayments
+
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -154,7 +157,14 @@ fun QuickKartApp(
                 maxWidth = maxWidth,
                 screenZoomPercent = uiState.preferences.screenZoomPercent
             )
-            CompositionLocalProvider(LocalQuickKartMetrics provides metrics) {
+            CompositionLocalProvider(
+                LocalQuickKartMetrics provides metrics,
+                LocalSavedPayments provides SavedPayments(
+                    upiId = uiState.preferences.savedUpiId,
+                    cardLast4 = uiState.preferences.savedCardLast4,
+                    onSave = viewModel::savePaymentMethod
+                )
+            ) {
                 if (!uiState.isReady) {
                     Box(
                         modifier = Modifier
@@ -388,6 +398,11 @@ fun QuickKartApp(
                             onShowMessage = { msg -> showToast(msg) },
                             onLinkGoogleAccount = viewModel::linkGoogleAccount,
                             onUnlinkGoogleAccount = viewModel::unlinkGoogleAccount,
+                            promos = viewModel.availablePromos,
+                            onRedeemReferral = { code ->
+                                viewModel.redeemReferralCode(code, referralCodeFor(uiState.preferences.userPhone))
+                            },
+                            onRemoveSavedPayments = viewModel::removeSavedPaymentMethods,
                             openSection = openSection,
                             onOpenSection = { section ->
                                 navController.navigate("account/$section") { launchSingleTop = true }
@@ -425,7 +440,10 @@ fun QuickKartApp(
                                 onIncrementCart = viewModel::incrementCart,
                                 onDecrementCart = viewModel::decrementCart,
                                 onOpenCart = { navigateToTab(BottomTab.CART) },
-                                onShowMessage = { msg -> showToast(msg) }
+                                onShowMessage = { msg -> showToast(msg) },
+                                onSearchSubmitted = viewModel::addRecentSearch,
+                                onClearRecentSearches = viewModel::clearRecentSearches,
+                                onMarkInboxSeen = viewModel::markInboxSeen
                             )
                         }
 
@@ -440,6 +458,7 @@ fun QuickKartApp(
                                 onPromoInputChange = viewModel::updatePromoInput,
                                 onApplyPromo = viewModel::applyPromoCode,
                                 onRemovePromo = viewModel::removePromo,
+                                onApplyBestOffer = viewModel::applyBestOffer,
                                 onSelectTip = viewModel::selectTip,
                                 onSelectCustomTipMode = viewModel::selectCustomTipMode,
                                 onCustomTipChange = viewModel::updateCustomTip,
@@ -474,7 +493,10 @@ fun QuickKartApp(
                                     openSupport(orderId = targetOrder.orderId, openWizardDirectly = true)
                                 },
                                 onBrowseStorefront = { navigateToTab(BottomTab.HOME) },
-                                onShowMessage = { msg -> showToast(msg) }
+                                onShowMessage = { msg -> showToast(msg) },
+                                onCancelOrder = { order ->
+                                    viewModel.cancelOrder(order) { msg -> showToast(msg) }
+                                }
                             )
                         }
 
@@ -593,7 +615,9 @@ private fun TabNavIcon(
                     if (cartCount > 0) {
                         Badge(
                             containerColor = tokens.deliveryGreenDeep,
-                            contentColor = Color.White
+                            contentColor = Color.White,
+                            // Sit on the icon's top-right corner instead of covering the cart.
+                            modifier = Modifier.offset(x = 6.dp, y = (-4).dp)
                         ) {
                             Text(cartCount.toString())
                         }

@@ -83,6 +83,9 @@ interface OrderDao {
 
     @Query("SELECT * FROM orders WHERE orderId = :orderId LIMIT 1")
     suspend fun getOrderById(orderId: String): OrderEntity?
+
+    @Query("DELETE FROM orders WHERE orderId = :orderId")
+    suspend fun deleteOrder(orderId: String)
 }
 
 @Dao

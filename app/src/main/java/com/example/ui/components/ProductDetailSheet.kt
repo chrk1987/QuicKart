@@ -1,5 +1,8 @@
 package com.example.ui.components
 
+import com.example.ui.screens.ProductReviewsSection
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -90,6 +93,7 @@ fun ProductDetailBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
                 .padding(horizontal = metrics.screenHorizontalPadding + 4.dp)
                 .padding(bottom = 24.dp),
@@ -375,6 +379,9 @@ fun ProductDetailBottomSheet(
                     }
                 }
             }
+
+            HorizontalDivider(color = tokens.border)
+            ProductReviewsSection(product = product)
         }
     }
 }

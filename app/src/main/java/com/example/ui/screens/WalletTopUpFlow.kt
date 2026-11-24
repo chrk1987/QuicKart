@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -156,19 +159,25 @@ private fun PaymentFlowDialog(
     var amountText by remember { mutableStateOf((startAmount ?: 500).toString()) }
     val amount = amountText.toIntOrNull() ?: 0
 
+    val saved = LocalSavedPayments.current
     var method by remember { mutableStateOf(initialMethod) }
-    var upiApp by remember { mutableStateOf<String?>("GPay") }
-    var upiId by remember { mutableStateOf("") }
+    // A saved UPI ID is pre-filled; otherwise default to the GPay app.
+    var upiApp by remember { mutableStateOf<String?>(if (saved.upiId.isBlank()) "GPay" else null) }
+    var upiId by remember { mutableStateOf(saved.upiId) }
     var cardNumber by remember { mutableStateOf("") }
     var cardExpiry by remember { mutableStateOf("") }
     var cardCvv by remember { mutableStateOf("") }
+    // With a saved card only the CVV is needed.
+    var useSavedCard by remember { mutableStateOf(saved.cardLast4.isNotBlank()) }
+    var saveForLater by remember { mutableStateOf(true) }
     var bank by remember { mutableStateOf(Banks[1]) }
     var methodError by remember { mutableStateOf<String?>(null) }
     var txnRef by remember { mutableStateOf("") }
 
+    val cardLast4 = if (useSavedCard) saved.cardLast4 else cardNumber.takeLast(4)
     val methodNote = when (method) {
         TopUpMethod.UPI -> if (upiId.isNotBlank()) "Added via UPI • $upiId" else "Added via UPI • ${upiApp ?: "UPI"}"
-        TopUpMethod.CARD -> "Added via Card •••• ${cardNumber.takeLast(4)}"
+        TopUpMethod.CARD -> "Added via Card •••• $cardLast4"
         TopUpMethod.NETBANKING -> "Added via Netbanking • $bank"
     }
     val processingText = when (method) {
@@ -268,14 +277,27 @@ private fun PaymentFlowDialog(
                                                 methodError = null
                                             }
                                         )
-                                        TopUpMethod.CARD -> CardDetails(
-                                            number = cardNumber,
-                                            expiry = cardExpiry,
-                                            cvv = cardCvv,
-                                            onNumberChange = { cardNumber = it; methodError = null },
-                                            onExpiryChange = { cardExpiry = it; methodError = null },
-                                            onCvvChange = { cardCvv = it; methodError = null }
-                                        )
+                                        TopUpMethod.CARD -> if (useSavedCard) {
+                                            SavedCardDetails(
+                                                last4 = saved.cardLast4,
+                                                cvv = cardCvv,
+                                                onCvvChange = { cardCvv = it; methodError = null },
+                                                onUseDifferentCard = {
+                                                    useSavedCard = false
+                                                    cardCvv = ""
+                                                    methodError = null
+                                                }
+                                            )
+                                        } else {
+                                            CardDetails(
+                                                number = cardNumber,
+                                                expiry = cardExpiry,
+                                                cvv = cardCvv,
+                                                onNumberChange = { cardNumber = it; methodError = null },
+                                                onExpiryChange = { cardExpiry = it; methodError = null },
+                                                onCvvChange = { cardCvv = it; methodError = null }
+                                            )
+                                        }
                                         TopUpMethod.NETBANKING -> BankDetails(
                                             selectedBank = bank,
                                             onSelectBank = { bank = it }
@@ -286,6 +308,30 @@ private fun PaymentFlowDialog(
                             if (methodError != null) {
                                 Text(methodError!!, style = MaterialTheme.typography.bodySmall, color = tokens.alertRed)
                             }
+                            val canSave = (method == TopUpMethod.UPI && upiId.isNotBlank() && upiId != saved.upiId) ||
+                                (method == TopUpMethod.CARD && !useSavedCard)
+                            if (canSave) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { saveForLater = !saveForLater }
+                                        .testTag("save_payment_method_toggle")
+                                ) {
+                                    Checkbox(
+                                        checked = saveForLater,
+                                        onCheckedChange = { saveForLater = it },
+                                        colors = CheckboxDefaults.colors(checkedColor = tokens.deliveryGreenDeep)
+                                    )
+                                    Text(
+                                        if (method == TopUpMethod.CARD) "Save card (last 4 digits only) for faster checkout"
+                                        else "Save this UPI ID for faster checkout",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = tokens.ink
+                                    )
+                                }
+                            }
                             SecureNote(
                                 if (forOrder) "Your order is placed only after payment succeeds"
                                 else "Money is added only after payment succeeds"
@@ -295,7 +341,11 @@ private fun PaymentFlowDialog(
                                 testTag = "wallet_top_up_pay_button",
                                 icon = Icons.Rounded.Lock,
                                 onClick = {
-                                    methodError = validateMethod(method, upiApp, upiId, cardNumber, cardExpiry, cardCvv)
+                                    methodError = if (method == TopUpMethod.CARD && useSavedCard) {
+                                        if (cardCvv.length == 3) null else "Enter the 3-digit CVV."
+                                    } else {
+                                        validateMethod(method, upiApp, upiId, cardNumber, cardExpiry, cardCvv)
+                                    }
                                     if (methodError == null) {
                                         step = if (method == TopUpMethod.CARD) TopUpStep.CARD_OTP else TopUpStep.PROCESSING
                                     }
@@ -305,7 +355,7 @@ private fun PaymentFlowDialog(
 
                         TopUpStep.CARD_OTP -> CardOtpStep(
                             amountInr = amount,
-                            cardLast4 = cardNumber.takeLast(4),
+                            cardLast4 = cardLast4,
                             onVerified = { step = TopUpStep.PROCESSING }
                         )
 
@@ -314,7 +364,13 @@ private fun PaymentFlowDialog(
                             message = processingText,
                             onFinished = {
                                 txnRef = "QKP${System.currentTimeMillis().toString().takeLast(8)}${Random.nextInt(10, 99)}"
-                                if (simulatePaymentSucceeds(method, upiId, cardNumber)) {
+                                if (simulatePaymentSucceeds(method, upiId, cardLast4)) {
+                                    if (saveForLater) {
+                                        when {
+                                            method == TopUpMethod.UPI && upiId.isNotBlank() -> saved.onSave(upiId, null)
+                                            method == TopUpMethod.CARD && !useSavedCard -> saved.onSave(null, cardLast4)
+                                        }
+                                    }
                                     onPaymentSuccess(amount, methodNote)
                                     // For orders the caller closes this dialog and shows the order celebration.
                                     step = TopUpStep.SUCCESS
@@ -381,12 +437,71 @@ private fun validateMethod(
 }
 
 /** Prototype-only outcome. Real integrations must rely on the gateway's verified result. */
-private fun simulatePaymentSucceeds(method: TopUpMethod, upiId: String, cardNumber: String): Boolean =
+private fun simulatePaymentSucceeds(method: TopUpMethod, upiId: String, cardLast4: String): Boolean =
     when (method) {
         TopUpMethod.UPI -> !upiId.lowercase().startsWith("fail")
-        TopUpMethod.CARD -> !cardNumber.endsWith("0000")
+        TopUpMethod.CARD -> cardLast4 != "0000"
         TopUpMethod.NETBANKING -> true
     }
+
+/**
+ * Saved payment methods available to the payment screens (provided by the app shell).
+ * Only a UPI ID and a card's last 4 digits are ever stored — never full card data.
+ */
+data class SavedPayments(
+    val upiId: String = "",
+    val cardLast4: String = "",
+    val onSave: (upiId: String?, cardLast4: String?) -> Unit = { _, _ -> }
+)
+
+val LocalSavedPayments = compositionLocalOf { SavedPayments() }
+
+@Composable
+private fun SavedCardDetails(
+    last4: String,
+    cvv: String,
+    onCvvChange: (String) -> Unit,
+    onUseDifferentCard: () -> Unit
+) {
+    val tokens = QuickKartThemeTokens.colors
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = tokens.brandYellowSoft,
+        border = BorderStroke(1.dp, tokens.brandYellow),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("saved_card_option")
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = tokens.ink)
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Saved card •••• $last4", style = MaterialTheme.typography.titleSmall, color = tokens.ink)
+                Text("Enter CVV to pay", style = MaterialTheme.typography.bodySmall, color = tokens.muted)
+            }
+            Icon(Icons.Rounded.CheckCircle, contentDescription = "Selected", tint = tokens.deliveryGreenDeep)
+        }
+    }
+    OutlinedTextField(
+        value = cvv,
+        onValueChange = { onCvvChange(it.filter { ch -> ch.isDigit() }.take(3)) },
+        label = { Text("CVV") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("saved_card_cvv")
+    )
+    androidx.compose.material3.TextButton(
+        onClick = onUseDifferentCard,
+        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+        modifier = Modifier.testTag("use_different_card_button")
+    ) { Text("Use a different card", fontWeight = FontWeight.Bold) }
+}
 
 @Composable
 private fun TopUpHeader(

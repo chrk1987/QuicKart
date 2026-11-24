@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.data.model.PaymentMethod
+import androidx.compose.material3.AlertDialog
 import com.example.util.itemCountLabel
 import android.Manifest
 import android.content.Intent
@@ -126,7 +128,8 @@ fun LiveTrackingScreen(
     onSubmitRating: (String, Int, List<String>, String) -> Unit,
     onOpenSupport: (OrderRecord) -> Unit,
     onBrowseStorefront: () -> Unit,
-    onShowMessage: (String) -> Unit
+    onShowMessage: (String) -> Unit,
+    onCancelOrder: (OrderRecord) -> Unit = {}
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
@@ -196,6 +199,41 @@ fun LiveTrackingScreen(
     val seconds = order.remainingSeconds % 60
     val formattedEta = String.format(Locale.US, "%02d:%02d", minutes, seconds)
     var showOrderSummarySheet by remember(order.orderId) { mutableStateOf(false) }
+    var showCancelConfirm by remember(order.orderId) { mutableStateOf(false) }
+
+    if (showCancelConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelConfirm = false },
+            containerColor = tokens.surface,
+            title = { Text("Cancel order ${order.orderId}?", color = tokens.ink) },
+            text = {
+                Text(
+                    if (order.paymentMethod == PaymentMethod.COD) {
+                        "The store hasn't started packing yet, so you can cancel for free."
+                    } else {
+                        "The store hasn't started packing yet. ₹${order.totalPaid} will be refunded instantly to your QuickKart Wallet."
+                    },
+                    color = tokens.muted
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCancelConfirm = false
+                        onCancelOrder(order)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.alertRed),
+                    modifier = Modifier.testTag("confirm_cancel_order")
+                ) { Text("Cancel order", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showCancelConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink)
+                ) { Text("Keep order") }
+            }
+        )
+    }
     var showFeedbackSheet by remember(order.orderId) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val receiptService = remember(context) { PdfReceiptService(context) }
@@ -744,6 +782,22 @@ fun LiveTrackingScreen(
                                 color = tokens.ink,
                                 fontWeight = FontWeight.Bold
                             )
+                        }
+
+                        // Cancellation is only possible before the store starts packing.
+                        if (order.stage == OrderStage.CONFIRMED) {
+                            OutlinedButton(
+                                onClick = { showCancelConfirm = true },
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, tokens.alertRed.copy(alpha = 0.5f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.alertRed),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .defaultMinSize(minHeight = 48.dp)
+                                    .testTag("tracking_cancel_order_button")
+                            ) {
+                                Text("Cancel Order", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

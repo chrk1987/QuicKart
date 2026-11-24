@@ -1,5 +1,11 @@
 package com.example.ui.screens
 
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import com.example.util.itemCountLabel
 import android.Manifest
 import android.content.pm.PackageManager
@@ -118,13 +124,20 @@ fun StorefrontScreen(
     onIncrementCart: (String, String) -> Unit,
     onDecrementCart: (String, String) -> Unit,
     onOpenCart: () -> Unit,
-    onShowMessage: (String) -> Unit
+    onShowMessage: (String) -> Unit,
+    onSearchSubmitted: (String) -> Unit = {},
+    onClearRecentSearches: () -> Unit = {},
+    onMarkInboxSeen: () -> Unit = {}
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
     val context = LocalContext.current
     var showNeighborhoodMenu by remember { mutableStateOf(false) }
     var searchFocused by remember { mutableStateOf(false) }
+    // True while the search box has focus and is empty: shows recent / trending suggestions.
+    var showSearchSuggestions by remember { mutableStateOf(false) }
+    var showInbox by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
     var activeDetailProduct by remember { mutableStateOf<Product?>(null) }
     var showWishlistSheet by remember { mutableStateOf(false) }
     val selectedVariantByProduct = remember { mutableStateMapOf<String, String>() }
@@ -270,6 +283,31 @@ fun StorefrontScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val unread = unreadInboxCount(uiState)
+                            IconButton(
+                                onClick = { showInbox = true },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag("open_inbox_button")
+                            ) {
+                                BadgedBox(
+                                    badge = {
+                                        if (unread > 0) {
+                                            Badge(containerColor = tokens.alertRed, contentColor = Color.White) {
+                                                Text(if (unread > 9) "9+" else unread.toString())
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Notifications,
+                                        contentDescription = "Notifications, $unread unread",
+                                        tint = tokens.ink,
+                                        modifier = Modifier.size(metrics.iconMedium)
+                                    )
+                                }
+                            }
+
                             IconButton(
                                 onClick = { showWishlistSheet = true },
                                 modifier = Modifier
@@ -345,7 +383,14 @@ fun StorefrontScreen(
                         onValueChange = {
                             onSearchQueryChange(it)
                             searchFocused = it.isNotBlank()
+                            showSearchSuggestions = it.isBlank()
                         },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = {
+                            onSearchSubmitted(uiState.searchQuery)
+                            showSearchSuggestions = false
+                            focusManager.clearFocus()
+                        }),
                         placeholder = {
                             Text(
                                 text = when {
@@ -430,8 +475,25 @@ fun StorefrontScreen(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .onFocusChanged { state ->
+                                showSearchSuggestions = state.isFocused && uiState.searchQuery.isBlank()
+                            }
                             .testTag("storefront_search_input")
                     )
+
+                    // Recent & trending searches (focused, empty search box)
+                    AnimatedVisibility(visible = showSearchSuggestions && uiState.searchQuery.isBlank()) {
+                        SearchSuggestionsPanel(
+                            recent = uiState.preferences.recentSearches,
+                            onPick = { q ->
+                                onSearchQueryChange(q)
+                                onSearchSubmitted(q)
+                                showSearchSuggestions = false
+                                searchFocused = true
+                            },
+                            onClearRecent = onClearRecentSearches
+                        )
+                    }
 
                     // Real-time Autocomplete Dropdown
                     AnimatedVisibility(
@@ -488,6 +550,7 @@ fun StorefrontScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clickable {
+                                                    onSearchSubmitted(uiState.searchQuery)
                                                     searchFocused = false
                                                     activeDetailProduct = prod
                                                 }
@@ -1016,6 +1079,22 @@ fun StorefrontScreen(
                 }
             }
         }
+    }
+
+    if (showInbox) {
+        val inboxItems = remember(uiState.orders, uiState.walletTransactions, uiState.supportTickets) {
+            buildInboxItems(uiState)
+        }
+        // Capture "last seen" when opened so new items stay highlighted until the inbox closes.
+        val seenAtOpen = remember { uiState.preferences.inboxLastSeenMillis }
+        NotificationInboxDialog(
+            items = inboxItems,
+            lastSeenMillis = seenAtOpen,
+            onDismiss = {
+                showInbox = false
+                onMarkInboxSeen()
+            }
+        )
     }
 
     activeDetailProduct?.let { detailProduct ->

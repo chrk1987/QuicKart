@@ -262,6 +262,30 @@ class QuickKartRepository(
         orderDao.upsertOrder(OrderEntity.fromDomain(order))
     }
 
+    suspend fun deleteOrder(orderId: String) = orderDao.deleteOrder(orderId)
+
+    /** Credits the wallet with a non top-up entry (refunds, referral rewards, cashback). */
+    suspend fun creditWallet(title: String, note: String, amountInr: Int) {
+        walletDao.insert(
+            WalletTransactionEntity(
+                id = "WTX-${System.currentTimeMillis()}-${Random.nextInt(100, 999)}",
+                title = title,
+                subtitle = note,
+                amountInr = amountInr,
+                isCredit = true,
+                createdAtMillis = System.currentTimeMillis()
+            )
+        )
+    }
+
+    suspend fun addRecentSearch(query: String) = prefsManager.addRecentSearch(query)
+    suspend fun clearRecentSearches() = prefsManager.clearRecentSearches()
+    suspend fun markInboxSeen(millis: Long) = prefsManager.markInboxSeen(millis)
+    suspend fun savePaymentMethod(upiId: String?, cardLast4: String?) =
+        prefsManager.savePaymentMethod(upiId, cardLast4)
+    suspend fun removeSavedPaymentMethods() = prefsManager.removeSavedPaymentMethods()
+    suspend fun setReferralRedeemed() = prefsManager.setReferralRedeemed()
+
     suspend fun updateOrderStage(orderId: String, newStage: OrderStage, newRemainingSeconds: Int) {
         val current = orderDao.getOrderById(orderId)?.toDomain() ?: return
         val updated = current.copy(

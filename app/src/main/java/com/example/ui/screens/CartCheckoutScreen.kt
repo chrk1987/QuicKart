@@ -111,6 +111,7 @@ fun CartCheckoutScreen(
     onPromoInputChange: (String) -> Unit,
     onApplyPromo: (String) -> Unit,
     onRemovePromo: () -> Unit,
+    onApplyBestOffer: () -> Unit = {},
     onSelectTip: (Int) -> Unit,
     onSelectCustomTipMode: () -> Unit,
     onCustomTipChange: (String) -> Unit,
@@ -557,8 +558,18 @@ fun CartCheckoutScreen(
                                 Text(
                                     text = "Promo Code",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = tokens.ink
+                                    color = tokens.ink,
+                                    modifier = Modifier.weight(1f)
                                 )
+                                if (draft.appliedPromo == null) {
+                                    TextButton(
+                                        onClick = onApplyBestOffer,
+                                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                                        modifier = Modifier.testTag("apply_best_offer_button")
+                                    ) {
+                                        Text("Apply best offer", fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
 
                             Row(
