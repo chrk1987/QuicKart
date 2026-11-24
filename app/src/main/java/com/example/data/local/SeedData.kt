@@ -807,7 +807,7 @@ object SeedData {
         SupportFaqTopic(
             id = "faq_delay",
             question = "My order took longer than the promised delivery window",
-            answer = "Choose Delivery Delay to track pod & rider logs or claim an instant ₹25 delay care credit directly into your QuickKart account.",
+            answer = "Choose Delivery Delay to check what happened with your delivery or claim an instant ₹25 delay care credit directly into your QuickKart account.",
             linkedCategory = SupportIssueCategory.DELIVERY_DELAY
         ),
         SupportFaqTopic(
@@ -832,7 +832,7 @@ object SeedData {
                 affectedItemsSummary = "1x Hydroponic Baby Spinach (150 g Box)",
                 affectedAmountInr = 69,
                 preferredResolution = SupportResolutionOption.EXPRESS_REPLACEMENT,
-                resolutionSummary = "8-Min Replacement pod verification queued",
+                resolutionSummary = "8-min replacement: store is checking fresh stock",
                 status = SupportTicketStatus.UNDER_REVIEW,
                 photoUriString = null,
                 messages = listOf(
@@ -845,7 +845,7 @@ object SeedData {
                     SupportMessage(
                         id = "msg_seed_2",
                         isUser = false,
-                        text = "Ticket SUP-4821 is Under Review for QK-84311. Our Indiranagar Pod Lead is checking fresh stock for a ₹0 replacement, or tap 'Instant Credit' below to receive ₹69 immediately.",
+                        text = "Ticket SUP-4821 is Under Review for QK-84311. Our Indiranagar store team is checking fresh stock for a free replacement, or tap 'Instant Credit' below to receive ₹69 immediately.",
                         timestampMillis = hoursAgo(5)
                     )
                 ),

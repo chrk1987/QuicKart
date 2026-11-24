@@ -1,5 +1,9 @@
 package com.example.ui.components
 
+import com.example.util.riderRouteProgress
+
+import com.example.util.elapsedFraction
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -287,15 +291,13 @@ fun InteractiveDeliveryRouteMap(
     val activeDropoff = fullWaypoints.last()
 
     // Continuous rider progress along real street waypoints tied to stage + countdown timer
+    // Rider position follows the shared prototype delivery timeline (see util/DeliveryTimeline.kt):
+    // waits at the store while confirmed/packing, then moves smoothly to home while out for delivery.
     val totalStageSeconds = (order.etaMinutes * 60).coerceAtLeast(60)
-    val elapsedFraction = (1f - (order.remainingSeconds.toFloat() / totalStageSeconds.toFloat()))
-        .coerceIn(0f, 1f)
-    val targetProgress = when (order.stage) {
-        OrderStage.CONFIRMED -> 0.05f
-        OrderStage.PACKING -> 0.14f
-        OrderStage.OUT_FOR_DELIVERY -> (0.20f + elapsedFraction * 0.76f).coerceIn(0.20f, 0.96f)
-        OrderStage.DELIVERED -> 1.0f
-    }
+    val targetProgress = riderRouteProgress(
+        order.stage,
+        elapsedFraction(order.remainingSeconds, totalStageSeconds)
+    )
     val riderProgress by animateFloatAsState(
         targetValue = targetProgress,
         animationSpec = tween(750, easing = FastOutSlowInEasing),

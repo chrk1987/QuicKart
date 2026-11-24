@@ -234,7 +234,7 @@ fun LoginScreen(
 
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
-                                text = "Fresh groceries,\nfrom pod to door in ${activeNeighborhood.etaMinutes} mins.",
+                                text = "Fresh groceries,\nfrom store to door in ${activeNeighborhood.etaMinutes} mins.",
                                 style = MaterialTheme.typography.headlineSmall,
                                 color = Color.White
                             )

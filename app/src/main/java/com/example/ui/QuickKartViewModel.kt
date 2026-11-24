@@ -29,6 +29,8 @@ import com.example.data.model.WalletTransaction
 import com.example.data.model.filterCatalogProducts
 import com.example.data.repository.QuickKartRepository
 import com.example.util.NotificationHelper
+import com.example.util.elapsedFraction
+import com.example.util.stageForElapsed
 import com.example.util.cancellationRefundInr
 import com.example.util.cardLast4ToStore
 import com.example.util.isCancellable
@@ -366,6 +368,30 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
                 val snapshot = uiState.value
                 val active = snapshot.activeOrder ?: continue
                 val nextRemaining = (active.remainingSeconds - 1).coerceAtLeast(0)
+                // Prototype timeline: move the order to the stage it should be in by now
+                // (Confirmed -> Packing -> Out for delivery -> Delivered). Never moves backwards,
+                // so the demo controls can still jump ahead.
+                val timelineStage = stageForElapsed(
+                    elapsedFraction(nextRemaining, active.etaMinutes * 60),
+                    nextRemaining
+                )
+                if (timelineStage.stepIndex > active.stage.stepIndex) {
+                    lastNotifiedOrderId = active.orderId
+                    repository.updateOrderStage(active.orderId, timelineStage, nextRemaining)
+                    if (snapshot.preferences.notificationsEnabled) {
+                        NotificationHelper.sendOrderStageNotification(
+                            context = getApplication(),
+                            orderId = active.orderId,
+                            stage = timelineStage,
+                            etaMinutes = active.etaMinutes,
+                            remainingSeconds = nextRemaining,
+                            totalEtaMinutes = active.etaMinutes,
+                            deliveryWindowLabel = active.deliveryWindowLabel,
+                            silentUpdate = false
+                        )
+                    }
+                    continue
+                }
                 if (active.remainingSeconds > 0) {
                     repository.updateOrderRemainingSeconds(active.orderId, nextRemaining)
                 }

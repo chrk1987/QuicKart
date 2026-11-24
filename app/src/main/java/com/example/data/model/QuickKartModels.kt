@@ -464,8 +464,8 @@ fun resolveInitialTicketOutcome(
 
         preferredResolution == SupportResolutionOption.EXPRESS_REPLACEMENT && category.requiresItemSelection -> SupportInitialOutcome(
             status = SupportTicketStatus.UNDER_REVIEW,
-            resolutionSummary = "8-Min Replacement pod verification queued",
-            deskMessage = "Logged under $ticketId for ${order.orderId} ($affectedItemsSummary).$photoNote Our Dark Store Pod lead is verifying fresh stock for a ₹0 8-minute replacement dispatch. Reply below if you prefer ₹$affectedAmountInr Instant Credit instead."
+            resolutionSummary = "8-min replacement: store is checking fresh stock",
+            deskMessage = "Logged under $ticketId for ${order.orderId} ($affectedItemsSummary).$photoNote Our store team is checking fresh stock for a free 8-minute replacement. Reply below if you prefer ₹$affectedAmountInr Instant Credit instead."
         )
 
         else -> {
@@ -473,7 +473,7 @@ fun resolveInitialTicketOutcome(
             SupportInitialOutcome(
                 status = SupportTicketStatus.UNDER_REVIEW,
                 resolutionSummary = "Assigned to QuickKart Care Desk",
-                deskMessage = "Ticket $ticketId is now Under Review for ${order.orderId} — ${category.label}$estimateText.$photoNote A Care Specialist is checking pod & rider logs and can process a credit or callback right here."
+                deskMessage = "Ticket $ticketId is now Under Review for ${order.orderId} — ${category.label}$estimateText.$photoNote A Care Specialist is checking the store and delivery records and can process a credit or callback right here."
             )
         }
     }
@@ -500,7 +500,7 @@ fun generateSupportDeskReply(
         )
 
         listOf("call", "agent", "specialist", "human", "manager").any { it in lower } -> SupportDeskAction(
-            replyText = "Priority callback requested for ${ticket.ticketId}. Our Senior Pod Specialist will ring your registered number within 2 minutes.",
+            replyText = "Priority callback requested for ${ticket.ticketId}. A senior care specialist will call your registered number within 2 minutes.",
             newStatus = SupportTicketStatus.UNDER_REVIEW,
             updatedResolutionSummary = "Priority specialist callback queued (~2 mins)"
         )
