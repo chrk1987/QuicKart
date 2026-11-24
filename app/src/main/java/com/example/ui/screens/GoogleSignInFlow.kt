@@ -186,6 +186,8 @@ fun SignInOptionDivider(modifier: Modifier = Modifier) {
 @Composable
 fun GoogleSignInFlow(
     onDismiss: () -> Unit,
+    /** false when linking Google to an already signed-in profile (phone is already verified). */
+    requirePhone: Boolean = true,
     onSignedIn: (profile: GoogleAccountProfile, verifiedPhone: String) -> Unit
 ) {
     val tokens = QuickKartThemeTokens.colors
@@ -259,7 +261,10 @@ fun GoogleSignInFlow(
 
                         GoogleStep.SIGNING_IN -> SigningInStep(
                             account = selected!!,
-                            onDone = { step = GoogleStep.LINK_PHONE }
+                            onDone = {
+                                if (requirePhone) step = GoogleStep.LINK_PHONE
+                                else onSignedIn(selected!!, "")
+                            }
                         )
 
                         GoogleStep.LINK_PHONE -> LinkPhoneStep(

@@ -11,6 +11,8 @@ val InkBlack = Color(0xFF141414)
 // Delivery & Success
 val DeliveryGreen = Color(0xFF22C55E)
 val DeliveryGreenDeep = Color(0xFF006E2F)
+// Dark-theme variant: readable as text on dark surfaces (~5:1) while still carrying white button text.
+val DeliveryGreenDeepDark = Color(0xFF1E9E52)
 val DeliveryGreenSoftLight = Color(0xFFDCFCE7)
 val DeliveryGreenSoftDark = Color(0xFF0E2B1A)
 

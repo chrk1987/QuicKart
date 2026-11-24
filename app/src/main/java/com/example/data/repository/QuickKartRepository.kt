@@ -306,8 +306,12 @@ class QuickKartRepository(
         phone: String,
         neighborhoodId: String,
         name: String = "Aarav Sharma",
-        email: String = ""
-    ) = prefsManager.signInWithPhone(phone, neighborhoodId, name, email)
+        email: String = "",
+        googleEmail: String = ""
+    ) = prefsManager.signInWithPhone(phone, neighborhoodId, name, email, googleEmail)
+
+    suspend fun linkGoogleAccount(googleEmail: String) = prefsManager.linkGoogleAccount(googleEmail)
+    suspend fun unlinkGoogleAccount() = prefsManager.unlinkGoogleAccount()
 
     suspend fun updateUserProfile(name: String, email: String, phone: String? = null) =
         prefsManager.updateUserProfile(name, email, phone)

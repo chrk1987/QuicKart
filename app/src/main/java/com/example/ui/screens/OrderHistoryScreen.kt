@@ -489,6 +489,7 @@ private fun HistoricalOrderCard(
                 OutlinedButton(
                     onClick = onQuickReorder,
                     shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.ink),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     modifier = Modifier
                         .weight(1f)
@@ -529,6 +530,7 @@ private fun HistoricalOrderCard(
                 OutlinedButton(
                     onClick = onDownloadReceipt,
                     shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.ink),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     modifier = Modifier
                         .weight(1f)

@@ -79,7 +79,15 @@ fun LoginScreen(
     onToggleTheme: (Boolean) -> Unit,
     onSelectNeighborhood: (String) -> Unit,
     onSignInWithPhone: (phone: String, neighborhoodId: String, firstName: String, lastName: String, email: String) -> Unit,
-    onContinueAsGuest: (String) -> Unit
+    onContinueAsGuest: (String) -> Unit,
+    onSignInWithGoogle: (
+        phone: String,
+        neighborhoodId: String,
+        firstName: String,
+        lastName: String,
+        email: String,
+        googleEmail: String
+    ) -> Unit = { phone, nId, first, last, email, _ -> onSignInWithPhone(phone, nId, first, last, email) }
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
@@ -511,7 +519,7 @@ fun LoginScreen(
             onDismiss = { googleProfile = null },
             onCompleteProfile = { firstName, lastName, email ->
                 googleProfile = null
-                onSignInWithPhone(googleVerifiedPhone, activeNeighborhood.id, firstName, lastName, email)
+                onSignInWithGoogle(googleVerifiedPhone, activeNeighborhood.id, firstName, lastName, email, profile.email)
             }
         )
     }

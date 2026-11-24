@@ -112,14 +112,51 @@ fun WalletTopUpFlow(
     presetAmountInr: Int? = null,
     onDismiss: () -> Unit,
     onPaymentSuccess: (amountInr: Int, methodNote: String) -> Unit
+) = PaymentFlowDialog(
+    forOrder = false,
+    currentBalanceInr = currentBalanceInr,
+    presetAmountInr = presetAmountInr?.coerceIn(MIN_TOP_UP_INR, MAX_TOP_UP_INR),
+    initialMethod = TopUpMethod.UPI,
+    onDismiss = onDismiss,
+    onPaymentSuccess = onPaymentSuccess
+)
+
+/**
+ * Pay for a checkout order (UPI / Card / Netbanking). [onPaymentSuccess] is called only after
+ * the (simulated) payment succeeds — the caller places the order then. On failure the user
+ * can retry or cancel; the cart is left untouched.
+ */
+@Composable
+fun OrderPaymentFlow(
+    amountInr: Int,
+    preferCard: Boolean,
+    onDismiss: () -> Unit,
+    onPaymentSuccess: (methodNote: String) -> Unit
+) = PaymentFlowDialog(
+    forOrder = true,
+    currentBalanceInr = 0,
+    presetAmountInr = amountInr,
+    initialMethod = if (preferCard) TopUpMethod.CARD else TopUpMethod.UPI,
+    onDismiss = onDismiss,
+    onPaymentSuccess = { _, note -> onPaymentSuccess(note.replace("Added via", "Paid via")) }
+)
+
+@Composable
+private fun PaymentFlowDialog(
+    forOrder: Boolean,
+    currentBalanceInr: Int,
+    presetAmountInr: Int?,
+    initialMethod: TopUpMethod,
+    onDismiss: () -> Unit,
+    onPaymentSuccess: (amountInr: Int, methodNote: String) -> Unit
 ) {
     val tokens = QuickKartThemeTokens.colors
-    val startAmount = presetAmountInr?.coerceIn(MIN_TOP_UP_INR, MAX_TOP_UP_INR)
+    val startAmount = presetAmountInr
     var step by remember { mutableStateOf(if (startAmount != null) TopUpStep.METHOD else TopUpStep.AMOUNT) }
     var amountText by remember { mutableStateOf((startAmount ?: 500).toString()) }
     val amount = amountText.toIntOrNull() ?: 0
 
-    var method by remember { mutableStateOf(TopUpMethod.UPI) }
+    var method by remember { mutableStateOf(initialMethod) }
     var upiApp by remember { mutableStateOf<String?>("GPay") }
     var upiId by remember { mutableStateOf("") }
     var cardNumber by remember { mutableStateOf("") }
@@ -178,13 +215,13 @@ fun WalletTopUpFlow(
                     TopUpHeader(
                         title = when (step) {
                             TopUpStep.AMOUNT -> "Add Money to Wallet"
-                            TopUpStep.METHOD -> "Choose Payment Method"
+                            TopUpStep.METHOD -> if (forOrder) "Pay for your Order" else "Choose Payment Method"
                             TopUpStep.CARD_OTP -> "Verify Card Payment"
                             TopUpStep.PROCESSING -> "Processing Payment"
                             TopUpStep.SUCCESS -> "Payment Successful"
                             TopUpStep.FAILED -> "Payment Failed"
                         },
-                        showBack = step == TopUpStep.METHOD || step == TopUpStep.CARD_OTP,
+                        showBack = (step == TopUpStep.METHOD && !forOrder) || step == TopUpStep.CARD_OTP,
                         showClose = !busy && step != TopUpStep.SUCCESS,
                         onBack = {
                             methodError = null
@@ -202,7 +239,11 @@ fun WalletTopUpFlow(
                         )
 
                         TopUpStep.METHOD -> {
-                            AmountSummaryRow(amountInr = amount, onChange = { step = TopUpStep.AMOUNT })
+                            AmountSummaryRow(
+                                label = if (forOrder) "Order total" else "Adding to Wallet",
+                                amountInr = amount,
+                                onChange = if (forOrder) null else { { step = TopUpStep.AMOUNT } }
+                            )
                             TopUpMethod.entries.forEach { m ->
                                 MethodOption(
                                     method = m,
@@ -245,7 +286,10 @@ fun WalletTopUpFlow(
                             if (methodError != null) {
                                 Text(methodError!!, style = MaterialTheme.typography.bodySmall, color = tokens.alertRed)
                             }
-                            SecureNote()
+                            SecureNote(
+                                if (forOrder) "Your order is placed only after payment succeeds"
+                                else "Money is added only after payment succeeds"
+                            )
                             YellowActionButton(
                                 text = "Pay ₹$amount",
                                 testTag = "wallet_top_up_pay_button",
@@ -270,16 +314,18 @@ fun WalletTopUpFlow(
                             message = processingText,
                             onFinished = {
                                 txnRef = "QKP${System.currentTimeMillis().toString().takeLast(8)}${Random.nextInt(10, 99)}"
-                                step = if (simulatePaymentSucceeds(method, upiId, cardNumber)) {
+                                if (simulatePaymentSucceeds(method, upiId, cardNumber)) {
                                     onPaymentSuccess(amount, methodNote)
-                                    TopUpStep.SUCCESS
+                                    // For orders the caller closes this dialog and shows the order celebration.
+                                    step = TopUpStep.SUCCESS
                                 } else {
-                                    TopUpStep.FAILED
+                                    step = TopUpStep.FAILED
                                 }
                             }
                         )
 
                         TopUpStep.SUCCESS -> ResultStep(
+                            forOrder = forOrder,
                             success = true,
                             amountInr = amount,
                             detail = methodNote.removePrefix("Added via "),
@@ -291,6 +337,7 @@ fun WalletTopUpFlow(
                         )
 
                         TopUpStep.FAILED -> ResultStep(
+                            forOrder = forOrder,
                             success = false,
                             amountInr = amount,
                             detail = methodNote.removePrefix("Added via "),
@@ -486,7 +533,7 @@ private fun AmountStep(
 }
 
 @Composable
-private fun AmountSummaryRow(amountInr: Int, onChange: () -> Unit) {
+private fun AmountSummaryRow(label: String, amountInr: Int, onChange: (() -> Unit)?) {
     val tokens = QuickKartThemeTokens.colors
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -499,7 +546,7 @@ private fun AmountSummaryRow(amountInr: Int, onChange: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Adding to Wallet", style = MaterialTheme.typography.labelSmall, color = tokens.muted)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = tokens.muted)
                 Text(
                     "₹$amountInr",
                     style = MaterialTheme.typography.titleLarge,
@@ -507,11 +554,13 @@ private fun AmountSummaryRow(amountInr: Int, onChange: () -> Unit) {
                     fontWeight = FontWeight.ExtraBold
                 )
             }
-            androidx.compose.material3.TextButton(
-                onClick = onChange,
-                modifier = Modifier.testTag("wallet_top_up_change_amount")
-            ) {
-                Text("Change", color = tokens.ink, fontWeight = FontWeight.Bold)
+            if (onChange != null) {
+                androidx.compose.material3.TextButton(
+                    onClick = onChange,
+                    modifier = Modifier.testTag("wallet_top_up_change_amount")
+                ) {
+                    Text("Change", color = tokens.ink, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -765,6 +814,7 @@ private fun ProcessingStep(amountInr: Int, message: String, onFinished: () -> Un
 
 @Composable
 private fun ResultStep(
+    forOrder: Boolean,
     success: Boolean,
     amountInr: Int,
     detail: String,
@@ -798,17 +848,23 @@ private fun ResultStep(
             }
         }
         Text(
-            text = if (success) "₹$amountInr added to Wallet" else "₹$amountInr was not added",
+            text = when {
+                forOrder && success -> "₹$amountInr paid"
+                forOrder -> "Payment of ₹$amountInr failed"
+                success -> "₹$amountInr added to Wallet"
+                else -> "₹$amountInr was not added"
+            },
             style = MaterialTheme.typography.titleLarge,
             color = tokens.ink,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center
         )
         Text(
-            text = if (success) {
-                "Paid via $detail"
-            } else {
-                "The payment via $detail was declined. No money was deducted from your account."
+            text = when {
+                success -> "Paid via $detail"
+                forOrder -> "The payment via $detail was declined, so your order was not placed. " +
+                    "No money was deducted and your cart is saved."
+                else -> "The payment via $detail was declined. No money was deducted from your account."
             },
             style = MaterialTheme.typography.bodySmall,
             color = tokens.muted,
@@ -861,12 +917,12 @@ private fun ReceiptRow(label: String, value: String, valueColor: Color = QuickKa
 }
 
 @Composable
-private fun SecureNote() {
+private fun SecureNote(message: String) {
     val tokens = QuickKartThemeTokens.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Icon(Icons.Rounded.Lock, contentDescription = null, tint = tokens.deliveryGreenDeep, modifier = Modifier.size(14.dp))
         Text(
-            "100% secure payment • Money is added only after payment succeeds",
+            "100% secure payment • $message",
             style = MaterialTheme.typography.bodySmall,
             color = tokens.muted
         )

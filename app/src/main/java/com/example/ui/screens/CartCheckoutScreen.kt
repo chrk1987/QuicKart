@@ -128,6 +128,8 @@ fun CartCheckoutScreen(
     var showAddAddressDialog by remember { mutableStateOf(false) }
     // Non-null while the wallet top-up payment flow is open for this amount.
     var topUpAmount by remember { mutableStateOf<Int?>(null) }
+    // True while the UPI / Card payment for this order is in progress.
+    var showOrderPayment by remember { mutableStateOf(false) }
 
     if (uiState.cartItems.isEmpty()) {
         Box(
@@ -326,6 +328,7 @@ fun CartCheckoutScreen(
                                 )
                                 TextButton(
                                     onClick = { showAddAddressDialog = true },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
                                     modifier = Modifier.testTag("cart_add_address_button")
                                 ) {
                                     Icon(
@@ -957,7 +960,13 @@ fun CartCheckoutScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Button(
-                    onClick = onPlaceOrder,
+                    onClick = {
+                        // UPI / Card must be paid first; Wallet is debited and COD is collected at the door.
+                        when (draft.paymentMethod) {
+                            PaymentMethod.UPI, PaymentMethod.CARD -> showOrderPayment = true
+                            PaymentMethod.WALLET, PaymentMethod.COD -> onPlaceOrder()
+                        }
+                    },
                     enabled = !insufficientWallet,
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -1004,6 +1013,18 @@ fun CartCheckoutScreen(
             presetAmountInr = amount,
             onDismiss = { topUpAmount = null },
             onPaymentSuccess = onAddWalletMoney
+        )
+    }
+
+    if (showOrderPayment) {
+        OrderPaymentFlow(
+            amountInr = bill.grandTotal,
+            preferCard = draft.paymentMethod == PaymentMethod.CARD,
+            onDismiss = { showOrderPayment = false },
+            onPaymentSuccess = {
+                showOrderPayment = false
+                onPlaceOrder()
+            }
         )
     }
 }

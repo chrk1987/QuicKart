@@ -25,8 +25,16 @@ data class UserPreferences(
     val userName: String = "QuickKart Member",
     val userEmail: String = "",
     val selectedNeighborhoodId: String = "indiranagar",
-    val selectedAddressId: String = "addr_home"
+    val selectedAddressId: String = "addr_home",
+    /** How the user signed in: [SIGN_IN_PHONE], [SIGN_IN_GOOGLE] or [SIGN_IN_GUEST]. */
+    val signInMethod: String = SIGN_IN_PHONE,
+    /** Google account linked to this profile (set by Google sign-in or "Link Google account"). */
+    val linkedGoogleEmail: String = ""
 )
+
+const val SIGN_IN_PHONE = "phone"
+const val SIGN_IN_GOOGLE = "google"
+const val SIGN_IN_GUEST = "guest"
 
 class PreferencesManager(private val context: Context) {
 
@@ -41,6 +49,8 @@ class PreferencesManager(private val context: Context) {
         val USER_EMAIL = stringPreferencesKey("user_email")
         val SELECTED_NEIGHBORHOOD = stringPreferencesKey("selected_neighborhood")
         val SELECTED_ADDRESS_ID = stringPreferencesKey("selected_address_id")
+        val SIGN_IN_METHOD = stringPreferencesKey("sign_in_method")
+        val LINKED_GOOGLE_EMAIL = stringPreferencesKey("linked_google_email")
     }
 
     val preferencesFlow: Flow<UserPreferences> = context.quickKartDataStore.data.map { prefs ->
@@ -54,7 +64,10 @@ class PreferencesManager(private val context: Context) {
             userName = prefs[Keys.USER_NAME] ?: "QuickKart Member",
             userEmail = prefs[Keys.USER_EMAIL] ?: "",
             selectedNeighborhoodId = prefs[Keys.SELECTED_NEIGHBORHOOD] ?: "indiranagar",
-            selectedAddressId = prefs[Keys.SELECTED_ADDRESS_ID] ?: "addr_home"
+            selectedAddressId = prefs[Keys.SELECTED_ADDRESS_ID] ?: "addr_home",
+            signInMethod = prefs[Keys.SIGN_IN_METHOD]
+                ?: if (prefs[Keys.IS_GUEST] == true) SIGN_IN_GUEST else SIGN_IN_PHONE,
+            linkedGoogleEmail = prefs[Keys.LINKED_GOOGLE_EMAIL] ?: ""
         )
     }
 
@@ -85,7 +98,8 @@ class PreferencesManager(private val context: Context) {
         phone: String,
         neighborhoodId: String,
         name: String = "Aarav Sharma",
-        email: String = ""
+        email: String = "",
+        googleEmail: String = ""
     ) {
         context.quickKartDataStore.edit {
             it[Keys.IS_LOGGED_IN] = true
@@ -94,7 +108,21 @@ class PreferencesManager(private val context: Context) {
             it[Keys.USER_NAME] = name.ifBlank { "QuickKart Member" }
             it[Keys.USER_EMAIL] = email
             it[Keys.SELECTED_NEIGHBORHOOD] = neighborhoodId
+            it[Keys.SIGN_IN_METHOD] = if (googleEmail.isNotBlank()) SIGN_IN_GOOGLE else SIGN_IN_PHONE
+            it[Keys.LINKED_GOOGLE_EMAIL] = googleEmail
         }
+    }
+
+    /** Links a Google account to the signed-in profile; fills the email if it was empty. */
+    suspend fun linkGoogleAccount(googleEmail: String) {
+        context.quickKartDataStore.edit {
+            it[Keys.LINKED_GOOGLE_EMAIL] = googleEmail
+            if (it[Keys.USER_EMAIL].isNullOrBlank()) it[Keys.USER_EMAIL] = googleEmail
+        }
+    }
+
+    suspend fun unlinkGoogleAccount() {
+        context.quickKartDataStore.edit { it[Keys.LINKED_GOOGLE_EMAIL] = "" }
     }
 
     suspend fun updateUserProfile(name: String, email: String, phone: String? = null) {
@@ -113,6 +141,8 @@ class PreferencesManager(private val context: Context) {
             it[Keys.USER_NAME] = "Guest Shopper"
             it[Keys.USER_EMAIL] = ""
             it[Keys.SELECTED_NEIGHBORHOOD] = neighborhoodId
+            it[Keys.SIGN_IN_METHOD] = SIGN_IN_GUEST
+            it[Keys.LINKED_GOOGLE_EMAIL] = ""
         }
     }
 
@@ -122,6 +152,7 @@ class PreferencesManager(private val context: Context) {
             it[Keys.IS_GUEST] = false
             it[Keys.USER_PHONE] = ""
             it[Keys.USER_EMAIL] = ""
+            it[Keys.LINKED_GOOGLE_EMAIL] = ""
         }
     }
 }

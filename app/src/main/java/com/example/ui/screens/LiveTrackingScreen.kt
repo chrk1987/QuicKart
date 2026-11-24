@@ -646,6 +646,7 @@ fun LiveTrackingScreen(
                             )
                             TextButton(
                                 onClick = { showOrderSummarySheet = true },
+                                colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
                                 modifier = Modifier.testTag("open_order_summary_sheet_button")
                             ) {
                                 Text("Full Bill", fontWeight = FontWeight.Bold)

@@ -55,7 +55,13 @@ import com.example.data.model.WalletTransaction
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.QuickKartMetricsTokens
 import com.example.ui.theme.QuickKartThemeTokens
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -69,6 +75,8 @@ fun WalletSheet(
     val tokens = QuickKartThemeTokens.colors
     val timeFmt = SimpleDateFormat("dd MMM • hh:mm a", Locale.getDefault())
     var showAddMoneyDialog by remember { mutableStateOf(false) }
+    var filter by remember { mutableStateOf(PassbookFilter.ALL) }
+    var selectedReceipt by remember { mutableStateOf<WalletTransaction?>(null) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -201,11 +209,45 @@ fun WalletSheet(
                     }
 
                     Text(
-                        text = "Recent Transactions",
+                        text = "Passbook",
                         style = MaterialTheme.typography.titleMedium,
                         color = tokens.ink,
                         fontWeight = FontWeight.Bold
                     )
+
+                    MonthSummaryRow(transactions)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PassbookFilter.entries.forEach { f ->
+                            val selected = f == filter
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = if (selected) tokens.ink else tokens.surfaceElevated,
+                                border = BorderStroke(1.dp, if (selected) tokens.ink else tokens.border),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .clickable { filter = f }
+                                    .testTag("passbook_filter_${f.name.lowercase()}")
+                            ) {
+                                Text(
+                                    text = f.label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (selected) tokens.background else tokens.ink,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    val visible = transactions
+                        .filter { filter.matches(it) }
+                        .sortedByDescending { it.createdAtMillis }
 
                     LazyColumn(
                         modifier = Modifier
@@ -214,12 +256,26 @@ fun WalletSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = 4.dp)
                     ) {
-                        items(transactions, key = { it.id }) { tx ->
+                        if (visible.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No ${filter.label.lowercase()} transactions yet.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = tokens.muted,
+                                    modifier = Modifier.padding(vertical = 12.dp)
+                                )
+                            }
+                        }
+                        items(visible, key = { it.id }) { tx ->
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
                                 color = tokens.surfaceElevated,
                                 border = BorderStroke(1.dp, tokens.border),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .clickable { selectedReceipt = tx }
+                                    .testTag("passbook_tx_${tx.id}")
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -229,6 +285,7 @@ fun WalletSheet(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Row(
+                                        modifier = Modifier.weight(1f),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
@@ -265,7 +322,10 @@ fun WalletSheet(
                                         style = MaterialTheme.typography.titleSmall,
                                         fontFamily = JetBrainsMonoFontFamily,
                                         color = if (tx.isCredit) tokens.deliveryGreenDeep else tokens.ink,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier.padding(start = 8.dp)
                                     )
                                 }
                             }
@@ -282,6 +342,189 @@ fun WalletSheet(
             currentBalanceInr = balanceInr,
             onDismiss = { showAddMoneyDialog = false },
             onPaymentSuccess = onAddMoney
+        )
+    }
+
+    selectedReceipt?.let { tx ->
+        WalletTransactionReceiptDialog(transaction = tx, onDismiss = { selectedReceipt = null })
+    }
+}
+
+private enum class PassbookFilter(val label: String) {
+    ALL("All"),
+    ADDED("Added"),
+    SPENT("Spent"),
+    REFUNDS("Refunds & rewards");
+
+    fun matches(tx: WalletTransaction): Boolean = when (this) {
+        ALL -> true
+        ADDED -> tx.isCredit && tx.isTopUp
+        SPENT -> !tx.isCredit
+        REFUNDS -> tx.isCredit && !tx.isTopUp
+    }
+}
+
+/** Top-ups are the "Money Added" credits; other credits are refunds, bonuses and cashback. */
+private val WalletTransaction.isTopUp: Boolean get() = title == "Money Added"
+
+@Composable
+private fun MonthSummaryRow(transactions: List<WalletTransaction>) {
+    val tokens = QuickKartThemeTokens.colors
+    val monthStart = Calendar.getInstance().apply {
+        set(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+    val thisMonth = transactions.filter { it.createdAtMillis >= monthStart }
+    val added = thisMonth.filter { it.isCredit }.sumOf { it.amountInr }
+    val spent = thisMonth.filter { !it.isCredit }.sumOf { it.amountInr }
+    val monthName = SimpleDateFormat("MMMM", Locale.getDefault()).format(Date())
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("passbook_month_summary"),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        SummaryTile("Received in $monthName", "+₹$added", tokens.deliveryGreenDeep, Modifier.weight(1f))
+        SummaryTile("Spent in $monthName", "-₹$spent", tokens.ink, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun SummaryTile(label: String, value: String, valueColor: Color, modifier: Modifier) {
+    val tokens = QuickKartThemeTokens.colors
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = tokens.surfaceElevated,
+        border = BorderStroke(1.dp, tokens.border),
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = tokens.muted)
+            Text(
+                value,
+                style = MaterialTheme.typography.titleMedium,
+                color = valueColor,
+                fontFamily = JetBrainsMonoFontFamily,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/** Receipt for one wallet transaction (amount, method/details, date, transaction ID). */
+@Composable
+fun WalletTransactionReceiptDialog(transaction: WalletTransaction, onDismiss: () -> Unit) {
+    val tokens = QuickKartThemeTokens.colors
+    val accent = if (transaction.isCredit) tokens.deliveryGreenDeep else tokens.ink
+    val dateText = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+        .format(Date(transaction.createdAtMillis))
+    val type = when {
+        !transaction.isCredit -> "Debit • Payment"
+        transaction.isTopUp -> "Credit • Wallet top-up"
+        else -> "Credit • Refund / reward"
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = tokens.surface),
+            border = BorderStroke(1.dp, tokens.border),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("wallet_receipt_dialog")
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    color = if (transaction.isCredit) tokens.deliveryGreenSoft else tokens.brandYellowSoft,
+                    shape = CircleShape,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (transaction.isCredit) Icons.Rounded.ArrowDownward else Icons.Rounded.ArrowUpward,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = "${if (transaction.isCredit) "+" else "-"}₹${transaction.amountInr}",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = accent,
+                    fontFamily = JetBrainsMonoFontFamily,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = transaction.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tokens.ink,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = tokens.surfaceElevated,
+                    border = BorderStroke(1.dp, tokens.border),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ReceiptLine("Details", transaction.subtitle)
+                        ReceiptLine("Type", type)
+                        ReceiptLine("Date", dateText)
+                        ReceiptLine("Transaction ID", transaction.id, mono = true)
+                        ReceiptLine("Status", "Success", valueColor = tokens.deliveryGreenDeep)
+                    }
+                }
+
+                Button(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = tokens.brandYellow,
+                        contentColor = tokens.onBrandYellow
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("wallet_receipt_close")
+                ) {
+                    Text("Close", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReceiptLine(
+    label: String,
+    value: String,
+    mono: Boolean = false,
+    valueColor: Color = QuickKartThemeTokens.colors.ink
+) {
+    val tokens = QuickKartThemeTokens.colors
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = tokens.muted)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = valueColor,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = if (mono) JetBrainsMonoFontFamily else null,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
         )
     }
 }

@@ -84,7 +84,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.data.local.SIGN_IN_GOOGLE
+import com.example.data.local.SIGN_IN_GUEST
 import com.example.data.model.OrderStage
+import com.example.data.model.WalletTransaction
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import com.example.data.model.SavedAddress
 import com.example.ui.QuickKartUiState
 import com.example.ui.components.AddAddressDialog
@@ -132,7 +136,9 @@ fun AccountHistoryScreen(
     /** null = Account list of parent settings; otherwise the section opened in its own screen. */
     openSection: String? = null,
     onOpenSection: (String) -> Unit = {},
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onLinkGoogleAccount: (googleEmail: String) -> Unit = {},
+    onUnlinkGoogleAccount: () -> Unit = {}
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
@@ -142,6 +148,8 @@ fun AccountHistoryScreen(
     var showTopUpFlow by remember { mutableStateOf(false) }
     var topUpPresetAmount by remember { mutableStateOf<Int?>(null) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
+    var showLinkGoogleFlow by remember { mutableStateOf(false) }
+    var selectedReceipt by remember { mutableStateOf<WalletTransaction?>(null) }
 
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -318,6 +326,26 @@ fun AccountHistoryScreen(
                         "Account type",
                         if (uiState.preferences.isGuest) "Guest" else "Registered"
                     )
+                    AccountDetailRow(
+                        "Signed in with",
+                        when (uiState.preferences.signInMethod) {
+                            SIGN_IN_GOOGLE -> "Google"
+                            SIGN_IN_GUEST -> "Guest access"
+                            else -> "Phone • OTP verified"
+                        }
+                    )
+                    if (!uiState.preferences.isGuest) {
+                        SignInMethodsCard(
+                            phone = uiState.preferences.userPhone,
+                            googleEmail = uiState.preferences.linkedGoogleEmail,
+                            signedInWithGoogle = uiState.preferences.signInMethod == SIGN_IN_GOOGLE,
+                            onLinkGoogle = { showLinkGoogleFlow = true },
+                            onUnlinkGoogle = {
+                                onUnlinkGoogleAccount()
+                                onShowMessage("Google account unlinked")
+                            }
+                        )
+                    }
                     OutlinedButton(
                         onClick = { showEditProfileDialog = true },
                         shape = RoundedCornerShape(12.dp),
@@ -402,7 +430,8 @@ fun AccountHistoryScreen(
                                 subtitle = "${tx.subtitle} • ${formatAccountDate(tx.createdAtMillis)}",
                                 trailing = "${if (tx.isCredit) "+" else "-"}₹${tx.amountInr}",
                                 trailingColor = if (tx.isCredit) tokens.deliveryGreenDeep else tokens.alertRed,
-                                testTag = "account_wallet_tx_${tx.id}"
+                                testTag = "account_wallet_tx_${tx.id}",
+                                onClick = { selectedReceipt = tx }
                             )
                         }
                     }
@@ -795,6 +824,22 @@ fun AccountHistoryScreen(
         )
     }
 
+    if (showLinkGoogleFlow) {
+        GoogleSignInFlow(
+            requirePhone = false,
+            onDismiss = { showLinkGoogleFlow = false },
+            onSignedIn = { profile, _ ->
+                showLinkGoogleFlow = false
+                onLinkGoogleAccount(profile.email)
+                onShowMessage("Linked Google account ${profile.email}")
+            }
+        )
+    }
+
+    selectedReceipt?.let { tx ->
+        WalletTransactionReceiptDialog(transaction = tx, onDismiss = { selectedReceipt = null })
+    }
+
     if (showEditProfileDialog) {
         val nameParts = uiState.preferences.userName.trim().split(" ")
         val fName = nameParts.firstOrNull() ?: ""
@@ -970,12 +1015,14 @@ fun AccountSubScreenTopBar(
                 tint = tokens.ink
             )
         }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = tokens.ink,
-            fontWeight = FontWeight.Bold
-        )
+        if (title.isNotBlank()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = tokens.ink,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -1016,7 +1063,8 @@ private fun AccountChildItem(
     subtitle: String,
     trailing: String,
     trailingColor: Color,
-    testTag: String
+    testTag: String,
+    onClick: (() -> Unit)? = null
 ) {
     val tokens = QuickKartThemeTokens.colors
     Surface(
@@ -1025,6 +1073,8 @@ private fun AccountChildItem(
         border = BorderStroke(1.dp, tokens.border),
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .testTag(testTag)
     ) {
         Row(
@@ -1054,6 +1104,86 @@ private fun AccountChildItem(
                 color = trailingColor,
                 fontWeight = FontWeight.Bold
             )
+        }
+    }
+}
+
+/** Shows how the user can sign in (phone, Google) with link / unlink for Google. */
+@Composable
+private fun SignInMethodsCard(
+    phone: String,
+    googleEmail: String,
+    signedInWithGoogle: Boolean,
+    onLinkGoogle: () -> Unit,
+    onUnlinkGoogle: () -> Unit
+) {
+    val tokens = QuickKartThemeTokens.colors
+    ChildGroupLabel("Sign-in methods")
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = tokens.surfaceElevated,
+        border = BorderStroke(1.dp, tokens.border),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("account_sign_in_methods")
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(Icons.Rounded.PhoneAndroid, contentDescription = null, tint = tokens.ink)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Mobile number", style = MaterialTheme.typography.titleSmall, color = tokens.ink)
+                    Text(phone.ifBlank { "Not added" }, style = MaterialTheme.typography.bodySmall, color = tokens.muted)
+                }
+                if (phone.isNotBlank()) {
+                    Icon(
+                        Icons.Rounded.CheckCircle,
+                        contentDescription = "Verified",
+                        tint = tokens.deliveryGreenDeep,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            HorizontalDivider(color = tokens.border)
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                GoogleGLogo(size = 22.dp)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Google", style = MaterialTheme.typography.titleSmall, color = tokens.ink)
+                    Text(
+                        googleEmail.ifBlank { "Not linked" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                when {
+                    googleEmail.isBlank() -> TextButton(
+                        onClick = onLinkGoogle,
+                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                        modifier = Modifier.testTag("account_link_google_button")
+                    ) { Text("Link", fontWeight = FontWeight.Bold) }
+                    // The account used to sign in can't be unlinked from here.
+                    signedInWithGoogle -> Icon(
+                        Icons.Rounded.CheckCircle,
+                        contentDescription = "Linked",
+                        tint = tokens.deliveryGreenDeep,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    else -> TextButton(
+                        onClick = onUnlinkGoogle,
+                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.alertRed),
+                        modifier = Modifier.testTag("account_unlink_google_button")
+                    ) { Text("Unlink", fontWeight = FontWeight.Bold) }
+                }
+            }
         }
     }
 }

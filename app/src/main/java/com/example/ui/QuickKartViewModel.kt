@@ -391,12 +391,21 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         neighborhoodId: String,
         firstName: String = "Aarav",
         lastName: String = "",
-        email: String = ""
+        email: String = "",
+        googleEmail: String = ""
     ) {
         val fullName = if (lastName.isNotBlank()) "${firstName.trim()} ${lastName.trim()}" else firstName.trim()
         viewModelScope.launch {
-            repository.signInWithPhone(phone, neighborhoodId, fullName, email.trim())
+            repository.signInWithPhone(phone, neighborhoodId, fullName, email.trim(), googleEmail)
         }
+    }
+
+    fun linkGoogleAccount(googleEmail: String) {
+        viewModelScope.launch { repository.linkGoogleAccount(googleEmail) }
+    }
+
+    fun unlinkGoogleAccount() {
+        viewModelScope.launch { repository.unlinkGoogleAccount() }
     }
 
     fun updateUserProfile(firstName: String, lastName: String, email: String, phone: String? = null) {

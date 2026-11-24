@@ -191,7 +191,10 @@ fun QuickKartApp(
                         onSignInWithPhone = { phone, nId, fName, lName, email ->
                             viewModel.signInWithPhone(phone, nId, fName, lName, email)
                         },
-                        onContinueAsGuest = viewModel::continueAsGuest
+                        onContinueAsGuest = viewModel::continueAsGuest,
+                        onSignInWithGoogle = { phone, nId, fName, lName, email, googleEmail ->
+                            viewModel.signInWithPhone(phone, nId, fName, lName, email, googleEmail)
+                        }
                     )
                     return@CompositionLocalProvider
                 }
@@ -383,6 +386,8 @@ fun QuickKartApp(
                             },
                             onSignOut = viewModel::signOut,
                             onShowMessage = { msg -> showToast(msg) },
+                            onLinkGoogleAccount = viewModel::linkGoogleAccount,
+                            onUnlinkGoogleAccount = viewModel::unlinkGoogleAccount,
                             openSection = openSection,
                             onOpenSection = { section ->
                                 navController.navigate("account/$section") { launchSingleTop = true }
@@ -475,8 +480,9 @@ fun QuickKartApp(
 
                         composable(BottomTab.ORDERS.route) {
                             Column(modifier = Modifier.fillMaxSize().background(tokens.background)) {
+                            // Order History draws its own title header, so the bar shows only the back arrow.
                             AccountSubScreenTopBar(
-                                title = "Order History",
+                                title = "",
                                 onBack = { navController.popBackStack() },
                                 modifier = Modifier.padding(horizontal = 4.dp)
                             )
