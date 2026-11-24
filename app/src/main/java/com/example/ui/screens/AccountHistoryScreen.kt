@@ -65,6 +65,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +81,7 @@ import com.example.data.model.OrderRecord
 import com.example.data.model.OrderStage
 import com.example.data.model.RestockSuggestion
 import com.example.data.model.SavedAddress
+import com.example.service.PdfReceiptService
 import com.example.ui.QuickKartUiState
 import com.example.ui.components.AddAddressDialog
 import com.example.ui.components.QuickKartLogo
@@ -89,7 +91,7 @@ import com.example.ui.theme.AmberGold
 import com.example.ui.theme.QuickKartMetricsTokens
 import com.example.ui.theme.QuickKartThemeTokens
 import com.example.util.NotificationHelper
-import com.example.util.PdfReceiptGenerator
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -114,6 +116,8 @@ fun AccountHistoryScreen(
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val receiptService = remember(context) { PdfReceiptService(context) }
     var showAddAddressDialog by remember { mutableStateOf(false) }
 
     val notifPermissionLauncher = rememberLauncherForActivityResult(
@@ -344,24 +348,27 @@ fun AccountHistoryScreen(
                         onQuickReorder = { onQuickReorder(order) },
                         onReorderCheckout = { onReorderCheckout(order) },
                         onDownloadReceipt = {
-                            runCatching {
-                                val result = PdfReceiptGenerator.generateReceipt(context, order)
-                                val viewIntent = PdfReceiptGenerator.openPdfIntent(result.fileUri)
-                                val chooser = PdfReceiptGenerator.sharePdfIntent(result.fileUri, order.orderId)
-                                val launched = runCatching {
-                                    context.startActivity(viewIntent)
-                                }.isSuccess
-                                if (!launched) {
-                                    context.startActivity(chooser)
-                                }
-                                val msg = if (result.savedToDownloads) {
-                                    "Receipt ${result.fileName} saved to Downloads/QuickKart!"
-                                } else {
-                                    "Receipt ${result.fileName} generated!"
-                                }
-                                onShowMessage(msg)
-                            }.onFailure { err ->
-                                onShowMessage("Could not generate PDF: ${err.localizedMessage ?: "Error"}")
+                            coroutineScope.launch {
+                                receiptService.generateAndSaveReceipt(order)
+                                    .onSuccess { result ->
+                                        val viewIntent = PdfReceiptService.openPdfIntent(result.fileUri)
+                                        val chooser = PdfReceiptService.sharePdfIntent(result.fileUri, order.orderId)
+                                        val launched = runCatching {
+                                            context.startActivity(viewIntent)
+                                        }.isSuccess
+                                        if (!launched) {
+                                            context.startActivity(chooser)
+                                        }
+                                        val msg = if (result.savedToDownloads) {
+                                            "Receipt ${result.fileName} saved to Downloads/QuickKart!"
+                                        } else {
+                                            "Receipt ${result.fileName} saved!"
+                                        }
+                                        onShowMessage(msg)
+                                    }
+                                    .onFailure { err ->
+                                        onShowMessage("Could not generate PDF: ${err.localizedMessage ?: "Error"}")
+                                    }
                             }
                         }
                     )

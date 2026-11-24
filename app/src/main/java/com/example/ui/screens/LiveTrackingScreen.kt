@@ -6,7 +6,9 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -14,6 +16,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -43,8 +50,12 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.DeliveryDining
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.rounded.Stop
@@ -66,6 +77,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,6 +96,7 @@ import com.example.R
 import com.example.data.local.SeedData
 import com.example.data.model.OrderRecord
 import com.example.data.model.OrderStage
+import com.example.service.PdfReceiptService
 import com.example.ui.components.InteractiveDeliveryRouteMap
 import com.example.ui.components.LiveOrderSummarySheetTriggerBar
 import com.example.ui.components.OrderSummaryBottomSheet
@@ -94,6 +107,7 @@ import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.QuickKartMetricsTokens
 import com.example.ui.theme.QuickKartThemeTokens
 import com.example.util.NotificationHelper
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -177,6 +191,31 @@ fun LiveTrackingScreen(
     val seconds = order.remainingSeconds % 60
     val formattedEta = String.format(Locale.US, "%02d:%02d", minutes, seconds)
     var showOrderSummarySheet by remember(order.orderId) { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val receiptService = remember(context) { PdfReceiptService(context) }
+
+    fun saveAndOpenReceipt() {
+        coroutineScope.launch {
+            receiptService.generateAndSaveReceipt(order)
+                .onSuccess { result ->
+                    val viewIntent = PdfReceiptService.openPdfIntent(result.fileUri)
+                    val chooser = PdfReceiptService.sharePdfIntent(result.fileUri, order.orderId)
+                    val launched = runCatching { context.startActivity(viewIntent) }.isSuccess
+                    if (!launched) {
+                        context.startActivity(chooser)
+                    }
+                    val msg = if (result.savedToDownloads) {
+                        "Receipt ${result.fileName} saved to Downloads/QuickKart!"
+                    } else {
+                        "Receipt ${result.fileName} saved!"
+                    }
+                    onShowMessage(msg)
+                }
+                .onFailure { err ->
+                    onShowMessage("Could not generate PDF: ${err.localizedMessage ?: "Error"}")
+                }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -260,17 +299,28 @@ fun LiveTrackingScreen(
                                     )
                                 }
                             }
-                            Text(
-                                text = headerHeadline,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Text(
-                                text = "${order.stage.subtitle} • ${order.neighborhoodName}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.88f)
-                            )
+                            AnimatedContent(
+                                targetState = order.stage,
+                                transitionSpec = {
+                                    (fadeIn(tween(260)) + slideInVertically { it / 3 }) togetherWith
+                                        (fadeOut(tween(180)) + slideOutVertically { -it / 3 })
+                                },
+                                label = "tracking_stage_header_anim"
+                            ) { _ ->
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = headerHeadline,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                    Text(
+                                        text = "${order.stage.subtitle} • ${order.neighborhoodName}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.88f)
+                                    )
+                                }
+                            }
                         }
 
                         Surface(
@@ -629,6 +679,31 @@ fun LiveTrackingScreen(
                                 }
                             }
                         }
+
+                        if (PdfReceiptService.canGenerateReceipt(order)) {
+                            OutlinedButton(
+                                onClick = { saveAndOpenReceipt() },
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, tokens.deliveryGreenDeep),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .defaultMinSize(minHeight = 48.dp)
+                                    .testTag("tracking_download_receipt_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Download,
+                                    contentDescription = null,
+                                    tint = tokens.deliveryGreenDeep,
+                                    modifier = Modifier.size(metrics.iconMedium)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "Download PDF Receipt",
+                                    color = tokens.deliveryGreenDeep,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -647,7 +722,12 @@ fun LiveTrackingScreen(
     if (showOrderSummarySheet) {
         OrderSummaryBottomSheet(
             order = order,
-            onDismiss = { showOrderSummarySheet = false }
+            onDismiss = { showOrderSummarySheet = false },
+            onDownloadReceipt = if (PdfReceiptService.canGenerateReceipt(order)) {
+                { saveAndOpenReceipt() }
+            } else {
+                null
+            }
         )
     }
 }
@@ -718,6 +798,15 @@ private fun AnimatedStageProgressCard(stage: OrderStage) {
                 OrderStage.entries.forEach { entry ->
                     val completed = entry.stepIndex < stage.stepIndex || stage == OrderStage.DELIVERED
                     val isCurrent = entry == stage && stage != OrderStage.DELIVERED
+                    val badgeColor by animateColorAsState(
+                        targetValue = when {
+                            completed -> tokens.deliveryGreen
+                            isCurrent -> tokens.brandYellow
+                            else -> tokens.surfaceElevated
+                        },
+                        animationSpec = tween(350),
+                        label = "stage_badge_color"
+                    )
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -729,28 +818,39 @@ private fun AnimatedStageProgressCard(stage: OrderStage) {
                                 .size(circleSize)
                                 .scale(if (isCurrent) pulseScale else 1f)
                                 .clip(CircleShape)
-                                .background(
-                                    when {
-                                        completed -> tokens.deliveryGreen
-                                        isCurrent -> tokens.brandYellow
-                                        else -> tokens.surfaceElevated
-                                    }
-                                )
+                                .background(badgeColor)
                         ) {
-                            if (completed) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(metrics.iconSmall)
-                                )
-                            } else {
-                                Text(
-                                    text = "${entry.stepIndex + 1}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (isCurrent) tokens.onBrandYellow else tokens.muted,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            when {
+                                completed -> {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(metrics.iconSmall)
+                                    )
+                                }
+                                isCurrent -> {
+                                    val stageIcon = when (entry) {
+                                        OrderStage.CONFIRMED -> Icons.Rounded.ReceiptLong
+                                        OrderStage.PACKING -> Icons.Rounded.Inventory2
+                                        OrderStage.OUT_FOR_DELIVERY -> Icons.Rounded.DeliveryDining
+                                        OrderStage.DELIVERED -> Icons.Rounded.Check
+                                    }
+                                    Icon(
+                                        imageVector = stageIcon,
+                                        contentDescription = entry.title,
+                                        tint = tokens.onBrandYellow,
+                                        modifier = Modifier.size(metrics.iconSmall)
+                                    )
+                                }
+                                else -> {
+                                    Text(
+                                        text = "${entry.stepIndex + 1}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = tokens.muted,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                         Spacer(Modifier.height(6.dp))

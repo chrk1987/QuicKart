@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.ReceiptLong
@@ -43,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -73,7 +75,8 @@ import java.util.Locale
 @Composable
 fun OrderSummaryBottomSheet(
     order: OrderRecord,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDownloadReceipt: (() -> Unit)? = null
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
@@ -480,6 +483,32 @@ fun OrderSummaryBottomSheet(
                             fontWeight = FontWeight.ExtraBold
                         )
                     }
+                }
+            }
+
+            if (order.stage == OrderStage.DELIVERED && onDownloadReceipt != null) {
+                OutlinedButton(
+                    onClick = onDownloadReceipt,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, tokens.deliveryGreenDeep),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 48.dp)
+                        .testTag("sheet_download_receipt_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Download,
+                        contentDescription = null,
+                        tint = tokens.deliveryGreenDeep,
+                        modifier = Modifier.size(metrics.iconMedium)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "Download PDF Receipt",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = tokens.deliveryGreenDeep,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 

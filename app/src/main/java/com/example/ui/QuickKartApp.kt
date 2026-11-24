@@ -73,6 +73,8 @@ import com.example.ui.screens.LiveTrackingScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.StorefrontScreen
 import androidx.compose.runtime.CompositionLocalProvider
+import com.example.data.model.OrderRecord
+import com.example.ui.components.OrderPlacedCelebrationOverlay
 import com.example.ui.components.QuickKartLogo
 import com.example.ui.theme.LocalQuickKartMetrics
 import com.example.ui.theme.QuickKartMetricsTokens
@@ -92,6 +94,7 @@ fun QuickKartApp(
         val tokens = QuickKartThemeTokens.colors
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
+        var celebratingOrder by remember { mutableStateOf<OrderRecord?>(null) }
 
         fun showToast(message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
             scope.launch {
@@ -338,7 +341,7 @@ fun QuickKartApp(
                                 onSelectPaymentMethod = viewModel::selectPaymentMethod,
                                 onPlaceOrder = {
                                     viewModel.placeOrder { order ->
-                                        showToast("Order ${order.orderId} placed! Arriving in ${order.etaMinutes}m")
+                                        celebratingOrder = order
                                         navigateToTab(BottomTab.TRACK)
                                     }
                                 },
@@ -398,6 +401,18 @@ fun QuickKartApp(
                     }
                 }
             }
+
+            OrderPlacedCelebrationOverlay(
+                order = celebratingOrder,
+                onFinished = {
+                    val placed = celebratingOrder
+                    celebratingOrder = null
+                    if (placed != null) {
+                        navigateToTab(BottomTab.TRACK)
+                        showToast("Order ${placed.orderId} placed! Arriving in ${placed.etaMinutes}m")
+                    }
+                }
+            )
             }
         }
     }

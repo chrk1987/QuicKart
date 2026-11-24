@@ -3,6 +3,7 @@ package com.example
 import com.example.data.local.SeedData
 import com.example.data.model.BillBreakdown
 import com.example.data.model.OrderStage
+import com.example.service.PdfReceiptService
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -44,5 +45,33 @@ class ExampleUnitTest {
         )
         assertTrue(aboveThreshold.isFreeDelivery)
         assertEquals(0, aboveThreshold.amountForFreeDelivery)
+    }
+
+    @Test
+    fun pdfReceiptService_buildsItemizedDataOnlyForCompletedOrders() {
+        val orders = SeedData.createSeededOrders()
+        val activeOrder = orders.first { it.isActive }
+        val completedOrder = orders.first { it.stage == OrderStage.DELIVERED }
+
+        assertFalse(PdfReceiptService.canGenerateReceipt(activeOrder))
+        assertTrue(PdfReceiptService.canGenerateReceipt(completedOrder))
+
+        var rejectedIncomplete = false
+        try {
+            PdfReceiptService.buildDocumentData(activeOrder)
+        } catch (_: IllegalArgumentException) {
+            rejectedIncomplete = true
+        }
+        assertTrue(rejectedIncomplete)
+
+        val receiptData = PdfReceiptService.buildDocumentData(completedOrder)
+        assertEquals(completedOrder.orderId, receiptData.orderId)
+        assertEquals(completedOrder.items.size, receiptData.items.size)
+        assertEquals(completedOrder.itemTotal, receiptData.pricing.itemTotal)
+        assertEquals(completedOrder.totalPaid, receiptData.pricing.totalPaid)
+        assertEquals(
+            completedOrder.items.sumOf { it.lineTotal },
+            receiptData.items.sumOf { it.lineTotalInr }
+        )
     }
 }
