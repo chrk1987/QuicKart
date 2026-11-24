@@ -13,9 +13,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CartItemEntity::class,
         SavedAddressEntity::class,
         OrderEntity::class,
-        SupportTicketEntity::class
+        SupportTicketEntity::class,
+        WalletTransactionEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class QuickKartDatabase : RoomDatabase() {
@@ -24,6 +25,7 @@ abstract class QuickKartDatabase : RoomDatabase() {
     abstract fun savedAddressDao(): SavedAddressDao
     abstract fun orderDao(): OrderDao
     abstract fun supportTicketDao(): SupportTicketDao
+    abstract fun walletDao(): WalletDao
 
     companion object {
         @Volatile
@@ -74,6 +76,24 @@ abstract class QuickKartDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `wallet_transactions` (
+                        `id` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `subtitle` TEXT NOT NULL,
+                        `amountInr` INTEGER NOT NULL,
+                        `isCredit` INTEGER NOT NULL,
+                        `createdAtMillis` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getInstance(context: Context): QuickKartDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -81,7 +101,7 @@ abstract class QuickKartDatabase : RoomDatabase() {
                     QuickKartDatabase::class.java,
                     "quickkart_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also { INSTANCE = it }
             }
