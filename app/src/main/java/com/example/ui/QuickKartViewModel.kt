@@ -592,6 +592,50 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Edits a saved address in place. Keeps its id and default flag, so the default and the
+     * checkout selection stay pointed at it. Orders already placed keep the address text they
+     * were placed with (orders store a copy). If the address was deleted meanwhile, nothing is
+     * written, so an edit can't bring a deleted address back.
+     */
+    fun updateAddress(
+        addressId: String,
+        label: String,
+        fullAddress: String,
+        landmark: String,
+        neighborhoodId: String,
+        area: String = "",
+        city: String = "",
+        state: String = "",
+        postalCode: String = "",
+        country: String = "India",
+        latitude: Double? = null,
+        longitude: Double? = null
+    ) {
+        val existing = uiState.value.savedAddresses.firstOrNull { it.id == addressId } ?: return
+        if (fullAddress.isBlank()) return
+        viewModelScope.launch {
+            val updated = existing.copy(
+                label = label,
+                fullAddress = fullAddress.trim(),
+                landmark = landmark.trim(),
+                neighborhoodId = neighborhoodId,
+                area = area.trim(),
+                city = city.trim(),
+                state = state.trim(),
+                postalCode = postalCode.trim(),
+                country = country.trim().ifBlank { "India" },
+                latitude = latitude,
+                longitude = longitude
+            )
+            repository.addAddress(updated)
+            // The pin may have moved to another hub; keep ETA and stock in sync for the active address.
+            if (uiState.value.selectedAddress?.id == addressId) {
+                repository.setSelectedNeighborhood(neighborhoodId)
+            }
+        }
+    }
+
     fun deleteAddress(addressId: String) {
         viewModelScope.launch { repository.deleteAddress(addressId) }
     }

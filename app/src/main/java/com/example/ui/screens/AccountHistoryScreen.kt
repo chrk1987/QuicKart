@@ -89,6 +89,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -150,6 +151,20 @@ fun AccountHistoryScreen(
         latitude: Double?,
         longitude: Double?
     ) -> Unit,
+    onUpdateAddress: (
+        addressId: String,
+        label: String,
+        fullAddress: String,
+        landmark: String,
+        neighborhoodId: String,
+        area: String,
+        city: String,
+        state: String,
+        postalCode: String,
+        country: String,
+        latitude: Double?,
+        longitude: Double?
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> },
     /** Called only after a top-up payment succeeds, with the method used. */
     onAddWalletMoney: (amountInr: Int, methodNote: String) -> Unit = { _, _ -> },
     onUpdateProfile: (firstName: String, lastName: String, email: String) -> Unit = { _, _, _ -> },
@@ -174,6 +189,9 @@ fun AccountHistoryScreen(
     val metrics = QuickKartMetricsTokens.metrics
     val context = LocalContext.current
     var showAddAddressDialog by remember { mutableStateOf(false) }
+    var editingAddressId by remember { mutableStateOf<String?>(null) }
+    // Look the address up live so a deleted address closes the editor instead of being re-saved.
+    val editingAddress = editingAddressId?.let { id -> uiState.savedAddresses.firstOrNull { it.id == id } }
     var showWalletSheet by remember { mutableStateOf(false) }
     var showTopUpFlow by remember { mutableStateOf(false) }
     var topUpPresetAmount by remember { mutableStateOf<Int?>(null) }
@@ -630,6 +648,7 @@ fun AccountHistoryScreen(
                                 address = addr,
                                 canDelete = uiState.savedAddresses.size > 1,
                                 onSetDefault = { onSetDefaultAddress(addr.id) },
+                                onEdit = { editingAddressId = addr.id },
                                 onDelete = { onDeleteAddress(addr.id) }
                             )
                         }
@@ -1010,6 +1029,22 @@ fun AccountHistoryScreen(
             }
         )
     }
+
+    if (editingAddress != null) {
+        key(editingAddress.id) {
+            AddAddressDialog(
+                neighborhoods = uiState.neighborhoods,
+                initialNeighborhoodId = editingAddress.neighborhoodId,
+                initialAddress = editingAddress,
+                onDismiss = { editingAddressId = null },
+                onSave = { label, full, landmark, nId, area, city, state, postal, country, lat, lng ->
+                    onUpdateAddress(editingAddress.id, label, full, landmark, nId, area, city, state, postal, country, lat, lng)
+                    editingAddressId = null
+                    onShowMessage("Updated your $label address")
+                }
+            )
+        }
+    }
 }
 
 private const val SECTION_PROFILE = "profile"
@@ -1367,6 +1402,7 @@ private fun SavedAddressRow(
     address: SavedAddress,
     canDelete: Boolean,
     onSetDefault: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val tokens = QuickKartThemeTokens.colors
@@ -1436,6 +1472,18 @@ private fun SavedAddressRow(
                         color = tokens.muted
                     )
                 }
+            }
+            // Edit is always available (even for the only address, which can't be deleted).
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.testTag("edit_address_${address.id}")
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Edit,
+                    contentDescription = "Edit ${address.label} address",
+                    tint = tokens.ink,
+                    modifier = Modifier.size(metrics.iconMedium)
+                )
             }
             if (canDelete) {
                 IconButton(onClick = onDelete) {

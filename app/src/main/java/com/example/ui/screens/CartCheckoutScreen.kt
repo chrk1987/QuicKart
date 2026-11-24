@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.LocalShipping
@@ -63,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -107,6 +109,20 @@ fun CartCheckoutScreen(
         latitude: Double?,
         longitude: Double?
     ) -> Unit,
+    onUpdateAddress: (
+        addressId: String,
+        label: String,
+        fullAddress: String,
+        landmark: String,
+        neighborhoodId: String,
+        area: String,
+        city: String,
+        state: String,
+        postalCode: String,
+        country: String,
+        latitude: Double?,
+        longitude: Double?
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> },
     onIncrementCart: (String, String) -> Unit,
     onDecrementCart: (String, String) -> Unit,
     onRemoveCartItem: (String, String) -> Unit,
@@ -129,6 +145,9 @@ fun CartCheckoutScreen(
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
     var showAddAddressDialog by remember { mutableStateOf(false) }
+    var editingAddressId by remember { mutableStateOf<String?>(null) }
+    // Look the address up live so a deleted address closes the editor instead of being re-saved.
+    val editingAddress = editingAddressId?.let { id -> uiState.savedAddresses.firstOrNull { it.id == id } }
     // Non-null while the wallet top-up payment flow is open for this amount.
     var topUpAmount by remember { mutableStateOf<Int?>(null) }
     // True while the UPI / Card payment for this order is in progress.
@@ -370,6 +389,7 @@ fun CartCheckoutScreen(
                                             verticalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                             Row(
+                                                modifier = Modifier.fillMaxWidth(),
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                                             ) {
@@ -382,8 +402,26 @@ fun CartCheckoutScreen(
                                                 Text(
                                                     text = addr.label,
                                                     style = MaterialTheme.typography.labelLarge,
-                                                    color = tokens.ink
+                                                    color = tokens.ink,
+                                                    modifier = Modifier.weight(1f)
                                                 )
+                                                Box(
+                                                    contentAlignment = Alignment.Center,
+                                                    modifier = Modifier
+                                                        .size(32.dp)
+                                                        .clip(CircleShape)
+                                                        .clickable(onClickLabel = "Edit ${addr.label} address") {
+                                                            editingAddressId = addr.id
+                                                        }
+                                                        .testTag("checkout_edit_address_${addr.id}")
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Edit,
+                                                        contentDescription = "Edit ${addr.label} address",
+                                                        tint = tokens.ink,
+                                                        modifier = Modifier.size(metrics.iconSmall)
+                                                    )
+                                                }
                                             }
                                             Text(
                                                 text = addr.fullAddress,
@@ -1018,6 +1056,21 @@ fun CartCheckoutScreen(
                 showAddAddressDialog = false
             }
         )
+    }
+
+    if (editingAddress != null) {
+        key(editingAddress.id) {
+            AddAddressDialog(
+                neighborhoods = uiState.neighborhoods,
+                initialNeighborhoodId = editingAddress.neighborhoodId,
+                initialAddress = editingAddress,
+                onDismiss = { editingAddressId = null },
+                onSave = { label, full, landmark, nId, area, city, state, postal, country, lat, lng ->
+                    onUpdateAddress(editingAddress.id, label, full, landmark, nId, area, city, state, postal, country, lat, lng)
+                    editingAddressId = null
+                }
+            )
+        }
     }
 
     topUpAmount?.let { amount ->

@@ -92,6 +92,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.data.model.Neighborhood
 import com.example.data.model.ResolvedPinAddress
+import com.example.data.model.SavedAddress
 import com.example.ui.theme.DeviceSizeClass
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.QuickKartMetricsTokens
@@ -134,15 +135,26 @@ fun AddAddressDialog(
         country: String,
         latitude: Double?,
         longitude: Double?
-    ) -> Unit
+    ) -> Unit,
+    /** When non-null the dialog edits this saved address instead of adding a new one. */
+    initialAddress: SavedAddress? = null
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val isEditMode = initialAddress != null
 
-    val startCoords = remember(initialNeighborhoodId) {
-        AddressPinResolver.defaultCoordinateForNeighborhood(initialNeighborhoodId)
+    val startCoords = remember(initialNeighborhoodId, initialAddress?.id) {
+        val savedLat = initialAddress?.latitude
+        val savedLng = initialAddress?.longitude
+        if (savedLat != null && savedLng != null) {
+            savedLat to savedLng
+        } else {
+            AddressPinResolver.defaultCoordinateForNeighborhood(
+                initialAddress?.neighborhoodId ?: initialNeighborhoodId
+            )
+        }
     }
 
     var pinLatitude by remember { mutableDoubleStateOf(startCoords.first) }
@@ -155,18 +167,30 @@ fun AddAddressDialog(
         )
     }
 
-    var selectedLabel by remember { mutableStateOf("Home") }
-    var neighborhoodId by remember { mutableStateOf(resolvedPin.nearestNeighborhoodId) }
-    var streetAddress by remember { mutableStateOf(resolvedPin.suggestedStreet) }
-    var area by remember { mutableStateOf(resolvedPin.area) }
-    var city by remember { mutableStateOf(resolvedPin.city) }
-    var stateName by remember { mutableStateOf(resolvedPin.state) }
-    var postalCode by remember { mutableStateOf(resolvedPin.postalCode) }
-    var country by remember { mutableStateOf(resolvedPin.country) }
-    var landmark by remember { mutableStateOf(resolvedPin.suggestedLandmark) }
+    // Edit mode: start from the saved values (not the pin's suggestions) so nothing the
+    // customer typed is lost just by opening the editor.
+    var selectedLabel by remember {
+        mutableStateOf(
+            initialAddress?.label?.takeIf { it in listOf("Home", "Work", "Other") }
+                ?: if (initialAddress != null) "Other" else "Home"
+        )
+    }
+    var neighborhoodId by remember {
+        mutableStateOf(initialAddress?.neighborhoodId ?: resolvedPin.nearestNeighborhoodId)
+    }
+    var streetAddress by remember { mutableStateOf(initialAddress?.fullAddress ?: resolvedPin.suggestedStreet) }
+    var area by remember { mutableStateOf(initialAddress?.area ?: resolvedPin.area) }
+    var city by remember { mutableStateOf(initialAddress?.city ?: resolvedPin.city) }
+    var stateName by remember { mutableStateOf(initialAddress?.state ?: resolvedPin.state) }
+    var postalCode by remember { mutableStateOf(initialAddress?.postalCode ?: resolvedPin.postalCode) }
+    var country by remember { mutableStateOf(initialAddress?.country ?: resolvedPin.country) }
+    var landmark by remember { mutableStateOf(initialAddress?.landmark ?: resolvedPin.suggestedLandmark) }
 
-    var streetManuallyEdited by remember { mutableStateOf(false) }
-    var landmarkManuallyEdited by remember { mutableStateOf(false) }
+    // Typed street/landmark are protected from pin auto-fill; in edit mode they start protected.
+    var streetManuallyEdited by remember { mutableStateOf(isEditMode) }
+    var landmarkManuallyEdited by remember { mutableStateOf(isEditMode) }
+    // Edit mode skips the first reverse-geocode so saved area/city/PIN stay until the pin moves.
+    var skipInitialResolve by remember { mutableStateOf(isEditMode) }
     var showCoordinateEditor by remember { mutableStateOf(false) }
     var latInput by remember { mutableStateOf(String.format(Locale.US, "%.5f", startCoords.first)) }
     var lngInput by remember { mutableStateOf(String.format(Locale.US, "%.5f", startCoords.second)) }
@@ -197,6 +221,10 @@ fun AddAddressDialog(
     LaunchedEffect(pinLatitude, pinLongitude) {
         latInput = String.format(Locale.US, "%.5f", pinLatitude)
         lngInput = String.format(Locale.US, "%.5f", pinLongitude)
+        if (skipInitialResolve) {
+            skipInitialResolve = false
+            return@LaunchedEffect
+        }
         isResolvingPin = true
         delay(320L)
         isDraggingPin = false
@@ -287,7 +315,7 @@ fun AddAddressDialog(
                 modifier = Modifier
                     .widthIn(max = 680.dp)
                     .fillMaxWidth()
-                    .testTag("add_address_dialog")
+                    .testTag(if (isEditMode) "edit_address_dialog" else "add_address_dialog")
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     // Header
@@ -314,7 +342,8 @@ fun AddAddressDialog(
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Pin Delivery Location",
+                                text = if (initialAddress != null) "Edit ${initialAddress.label} Address"
+                                    else "Pin Delivery Location",
                                 style = MaterialTheme.typography.titleLarge,
                                 color = tokens.ink
                             )
@@ -337,7 +366,7 @@ fun AddAddressDialog(
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Close,
-                                contentDescription = "Close add address dialog",
+                                contentDescription = if (isEditMode) "Close edit address dialog" else "Close add address dialog",
                                 tint = tokens.ink
                             )
                         }
@@ -370,9 +399,15 @@ fun AddAddressDialog(
                                     isDraggingPin = isDraggingPin,
                                     isResolvingPin = isResolvingPin,
                                     onMapMoved = { lat, lng, dragging ->
-                                        isDraggingPin = dragging
-                                        pinLatitude = lat
-                                        pinLongitude = lng
+                                        // Ignore sub-metre jitter (the map settling as it opens) so it
+                                        // doesn't re-geocode and overwrite saved fields.
+                                        if (kotlin.math.abs(lat - pinLatitude) > 1e-5 ||
+                                            kotlin.math.abs(lng - pinLongitude) > 1e-5
+                                        ) {
+                                            isDraggingPin = dragging
+                                            pinLatitude = lat
+                                            pinLongitude = lng
+                                        }
                                     },
                                     onRegisterMover = { mover ->
                                         moveMapToPoint = mover
@@ -754,8 +789,23 @@ fun AddAddressDialog(
                         }
                         Button(
                             onClick = {
+                                val unchanged = initialAddress != null &&
+                                    initialAddress.label == selectedLabel &&
+                                    initialAddress.fullAddress == streetAddress.trim() &&
+                                    initialAddress.landmark == landmark.trim() &&
+                                    initialAddress.neighborhoodId == neighborhoodId &&
+                                    initialAddress.area == area.trim() &&
+                                    initialAddress.city == city.trim() &&
+                                    initialAddress.state == stateName.trim() &&
+                                    initialAddress.postalCode == postalCode.trim() &&
+                                    initialAddress.country == country.trim().ifBlank { "India" } &&
+                                    initialAddress.latitude == pinLatitude &&
+                                    initialAddress.longitude == pinLongitude
                                 if (streetAddress.isBlank()) {
                                     showError = true
+                                } else if (unchanged) {
+                                    // Nothing edited: close without a write.
+                                    onDismiss()
                                 } else {
                                     onSave(
                                         selectedLabel,
@@ -783,7 +833,7 @@ fun AddAddressDialog(
                                 .testTag("save_address_confirm_button")
                         ) {
                             Text(
-                                text = "Confirm Pin & Save",
+                                text = if (isEditMode) "Save Changes" else "Confirm Pin & Save",
                                 fontWeight = FontWeight.ExtraBold
                             )
                         }

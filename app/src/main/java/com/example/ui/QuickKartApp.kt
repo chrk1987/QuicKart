@@ -413,6 +413,7 @@ fun QuickKartApp(
                             onSetDefaultAddress = viewModel::setDefaultAddress,
                             onDeleteAddress = viewModel::deleteAddress,
                             onAddAddress = viewModel::addAddress,
+                            onUpdateAddress = viewModel::updateAddress,
                             onAddWalletMoney = viewModel::addWalletMoney,
                             onUpdateProfile = { fName, lName, email ->
                                 viewModel.updateUserProfile(fName, lName, email)
@@ -483,6 +484,7 @@ fun QuickKartApp(
                                 uiState = uiState,
                                 onSelectAddress = viewModel::selectAddress,
                                 onAddAddress = viewModel::addAddress,
+                                onUpdateAddress = viewModel::updateAddress,
                                 onIncrementCart = viewModel::incrementCart,
                                 onDecrementCart = viewModel::decrementCart,
                                 onRemoveCartItem = viewModel::removeCartItem,
