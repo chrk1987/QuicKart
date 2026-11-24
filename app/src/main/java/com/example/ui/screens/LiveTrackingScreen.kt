@@ -291,7 +291,7 @@ fun LiveTrackingScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(metrics.itemSpacing)
         ) {
-            // Blinkit-style Green Live Status & ETA Header
+            // Live status & ETA header (brand black card)
             item {
                 val etaMinsHeadline = ((order.remainingSeconds + 59) / 60).coerceAtLeast(1)
                 val headerHeadline = when (order.stage) {
@@ -475,7 +475,7 @@ fun LiveTrackingScreen(
                 }
             }
 
-            // Hero Interactive Real Street Map View (Blinkit-style directly below header)
+            // Hero Interactive Real Street Map View (directly below header)
             item {
                 InteractiveDeliveryRouteMap(
                     order = order,
@@ -483,7 +483,7 @@ fun LiveTrackingScreen(
                 )
             }
 
-            // Blinkit-style Delivery Partner Card directly beneath the map
+            // Delivery partner card directly beneath the map
             item {
                 Card(
                     shape = RoundedCornerShape(18.dp),

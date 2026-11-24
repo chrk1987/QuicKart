@@ -385,7 +385,8 @@ fun ProductReviewsSection(product: Product) {
                     }
                     StarRow(review.stars, size = 14)
                     Text(review.text, style = MaterialTheme.typography.bodySmall, color = tokens.ink)
-                    Text("Verified purchase", style = MaterialTheme.typography.labelSmall, color = tokens.deliveryGreenDeep)
+                    // Prototype reviews are sample content, so they must not claim to be verified.
+                    Text("Sample review", style = MaterialTheme.typography.labelSmall, color = tokens.muted)
                 }
             }
         }

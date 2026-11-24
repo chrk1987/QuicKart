@@ -816,7 +816,7 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
                 riderNote = draft.riderNote.trim(),
                 paymentMethod = draft.paymentMethod,
                 riderName = "Arjun Verma",
-                riderPhone = "+91 98450 77218",
+                riderPhone = "+91 00000 00000", // fictional demo number; calls are masked in the UI
                 riderRating = 4.9f,
                 itemTotal = bill.itemTotal,
                 mrpSavings = bill.mrpSavings,

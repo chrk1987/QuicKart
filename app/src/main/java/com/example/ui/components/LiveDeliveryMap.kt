@@ -473,7 +473,7 @@ fun InteractiveDeliveryRouteMap(
         DeviceSizeClass.EXPANDED -> 360.dp
     }
 
-    // Blinkit-style hero street map card
+    // Hero street map card
     Card(
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = tokens.surface),
@@ -485,7 +485,7 @@ fun InteractiveDeliveryRouteMap(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                BlinkitOsmStreetMapSurface(
+                OsmStreetMapSurface(
                     order = order,
                     geoRoute = geoRoute,
                     fullWaypoints = fullWaypoints,
@@ -507,7 +507,7 @@ fun InteractiveDeliveryRouteMap(
                 )
             }
 
-            // Clean Blinkit-style bottom telemetry & street info footer
+            // Status chips & status line below the map
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -612,7 +612,7 @@ fun InteractiveDeliveryRouteMap(
                             .weight(1f)
                             .fillMaxWidth()
                     ) {
-                        BlinkitOsmStreetMapSurface(
+                        OsmStreetMapSurface(
                             order = order,
                             geoRoute = geoRoute,
                             fullWaypoints = fullWaypoints,
@@ -663,7 +663,7 @@ fun InteractiveDeliveryRouteMap(
 }
 
 @Composable
-private fun BlinkitOsmStreetMapSurface(
+private fun OsmStreetMapSurface(
     order: OrderRecord,
     geoRoute: NeighborhoodStreetRoute,
     fullWaypoints: List<OsmGeoPoint>,
@@ -695,7 +695,7 @@ private fun BlinkitOsmStreetMapSurface(
         true
     }
 
-    // Softened pastel light-mode tile filter for crisp Blinkit-style contrast under route & pins
+    // Softened pastel light-mode tile filter for crisp contrast under route & pins
     val lightPastelTileFilter = remember {
         // Calmer map: stronger desaturation mutes busy POI markers (hospitals etc.) under the route & pins.
         val cm = ColorMatrix().apply { setSaturation(0.45f) }
@@ -725,7 +725,7 @@ private fun BlinkitOsmStreetMapSurface(
     }
     val quantizedHeading = ((riderHeadingDegrees / 15f).roundToInt() * 15) % 360
     val riderDrawable = remember(context, quantizedHeading, riderBadgeLabel) {
-        createBlinkitRiderPinDrawable(
+        createRiderPinDrawable(
             context = context,
             headingDegrees = quantizedHeading.toFloat(),
             pillLabel = riderBadgeLabel
@@ -750,7 +750,7 @@ private fun BlinkitOsmStreetMapSurface(
         }
     }
 
-    // Double-cased route polylines (white/surface outer casing + green covered + dashed remaining) + 3 Blinkit markers
+    // Double-cased route polylines (white/surface outer casing + green covered + dashed remaining) + 3 markers (store, home, rider)
     val overlayHolders = remember(mapView) {
         val routeCasingLine = Polyline(mapView).apply {
             outlinePaint.strokeCap = Paint.Cap.ROUND
@@ -762,7 +762,7 @@ private fun BlinkitOsmStreetMapSurface(
             outlinePaint.pathEffect = DashPathEffect(floatArrayOf(22f, 14f), 0f)
         }
         val coveredLine = Polyline(mapView).apply {
-            outlinePaint.color = android.graphics.Color.rgb(12, 131, 31) // Blinkit Green
+            outlinePaint.color = android.graphics.Color.rgb(12, 131, 31) // QuickKart delivery green
             outlinePaint.strokeWidth = 12f
             outlinePaint.strokeCap = Paint.Cap.ROUND
             outlinePaint.strokeJoin = Paint.Join.ROUND
@@ -893,7 +893,7 @@ private fun BlinkitOsmStreetMapSurface(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Blinkit-style floating top-left street route status pill
+        // Floating top-left LIVE status pill
         Surface(
             color = tokens.surface.copy(alpha = 0.96f),
             shape = RoundedCornerShape(50),
@@ -1080,11 +1080,11 @@ private fun createLabeledHomePinDrawable(
     val cx = width / 2f
     val circleY = 24 * density
 
-    // Soft Blinkit green arrival halo
+    // Soft green arrival halo
     paint.color = android.graphics.Color.argb(56, 12, 131, 31)
     canvas.drawCircle(cx, circleY, 23 * density, paint)
 
-    // Crisp white ring + Blinkit green home pin
+    // Crisp white ring + green home pin
     paint.color = android.graphics.Color.WHITE
     canvas.drawCircle(cx, circleY, 15.5f * density, paint)
 
@@ -1117,7 +1117,7 @@ private fun createLabeledHomePinDrawable(
     return BitmapDrawable(context.resources, bitmap)
 }
 
-private fun createBlinkitRiderPinDrawable(
+private fun createRiderPinDrawable(
     context: Context,
     headingDegrees: Float,
     pillLabel: String
@@ -1130,7 +1130,7 @@ private fun createBlinkitRiderPinDrawable(
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     val cx = width / 2f
 
-    // Floating ETA pill above rider badge (Blinkit signature callout)
+    // Floating ETA pill above rider badge (status callout)
     drawFloatingPillLabel(
         canvas = canvas,
         density = density,

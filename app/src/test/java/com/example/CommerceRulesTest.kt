@@ -66,8 +66,8 @@ class CommerceRulesTest {
 
     @Test
     fun referralCode_isStableAndWellFormed() {
-        val code = referralCodeFor("+91 98450 77218")
-        assertEquals(code, referralCodeFor("+91 98450 77218"))
+        val code = referralCodeFor("+91 00000 07218")
+        assertEquals(code, referralCodeFor("+91 00000 07218"))
         assertTrue(code.startsWith("QK7218"))
         // The user's own code must itself be redeemable-format (so the own-code check is meaningful).
         assertNotNull(referralCodeError(code, ownCode = code, alreadyRedeemed = false))

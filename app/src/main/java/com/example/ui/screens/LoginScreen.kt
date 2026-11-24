@@ -91,7 +91,7 @@ fun LoginScreen(
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
-    var phoneNumber by remember { mutableStateOf("9845077218") }
+    var phoneNumber by remember { mutableStateOf("") }
     var otpSent by remember { mutableStateOf(false) }
     var otpCode by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf<String?>(null) }

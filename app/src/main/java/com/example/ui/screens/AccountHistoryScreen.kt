@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import androidx.compose.material.icons.rounded.Description
+
 import com.example.data.model.SupportTicketStatus
 
 import androidx.compose.material.icons.rounded.Shield
@@ -898,6 +900,22 @@ fun AccountHistoryScreen(
                 }
             }
 
+            // Open-source licences
+            if (openSection == null || openSection == SECTION_LICENSES) item {
+                AccountParentItem(
+                    key = SECTION_LICENSES,
+                    icon = Icons.Rounded.Description,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
+                    title = "Open-source licences",
+                    summary = "Fonts, libraries & map data we use",
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_LICENSES) }
+                ) {
+                    OpenSourceLicensesContent()
+                }
+            }
+
             // Sign Out Button
             if (openSection == null) item {
                 OutlinedButton(
@@ -1004,6 +1022,7 @@ private const val SECTION_SETTINGS = "settings"
 private const val SECTION_REWARDS = "rewards"
 private const val SECTION_ABOUT = "about"
 private const val SECTION_PRIVACY = "privacy"
+private const val SECTION_LICENSES = "licenses"
 
 private fun accountSectionTitle(section: String): String = when (section) {
     SECTION_PROFILE -> "Profile"
@@ -1015,6 +1034,7 @@ private fun accountSectionTitle(section: String): String = when (section) {
     SECTION_REWARDS -> "Offers & Rewards"
     SECTION_ABOUT -> "About QuickKart"
     SECTION_PRIVACY -> "Privacy Policy"
+    SECTION_LICENSES -> "Open-source licences"
     else -> "Account"
 }
 

@@ -355,7 +355,7 @@ private fun SupportHubContent(
             contentPadding = PaddingValues(metrics.screenHorizontalPadding),
             verticalArrangement = Arrangement.spacedBy(metrics.itemSpacing)
         ) {
-            // Blinkit-style Instant Care Promise Hero
+            // Instant Care Promise hero
             item {
                 Card(
                     shape = RoundedCornerShape(22.dp),
@@ -495,7 +495,7 @@ private fun SupportHubContent(
                 }
             }
 
-            // Blinkit-style Quick Self-Help FAQs
+            // Quick self-help FAQs
             item {
                 Spacer(Modifier.height(4.dp))
                 Text(

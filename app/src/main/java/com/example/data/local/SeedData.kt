@@ -552,7 +552,7 @@ object SeedData {
                 riderNote = "Please place the chilled milk bag inside the shoe cabinet shade.",
                 paymentMethod = PaymentMethod.UPI,
                 riderName = "Arjun Verma",
-                riderPhone = "+91 98450 77218",
+                riderPhone = "+91 00000 00000", // fictional demo number
                 riderRating = 4.9f,
                 itemTotal = 412,
                 mrpSavings = 97,
@@ -677,7 +677,7 @@ object SeedData {
                 riderNote = "Baby sleeping, please message on arrival.",
                 paymentMethod = PaymentMethod.UPI,
                 riderName = "Arjun Verma",
-                riderPhone = "+91 98450 77218",
+                riderPhone = "+91 00000 00000", // fictional demo number
                 riderRating = 4.9f,
                 itemTotal = 414,
                 mrpSavings = 73,
