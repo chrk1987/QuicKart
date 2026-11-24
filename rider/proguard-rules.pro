@@ -1,0 +1,1 @@
+# QuickKart Rider Proguard rules

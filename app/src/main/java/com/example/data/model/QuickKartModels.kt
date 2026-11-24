@@ -86,7 +86,40 @@ data class SavedAddress(
     val fullAddress: String,
     val landmark: String,
     val neighborhoodId: String,
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    val area: String = "",
+    val city: String = "",
+    val state: String = "",
+    val postalCode: String = "",
+    val country: String = "India",
+    val latitude: Double? = null,
+    val longitude: Double? = null
+) {
+    val formattedLocationLine: String
+        get() = listOf(area, city, state, postalCode)
+            .filter { it.isNotBlank() }
+            .joinToString(", ")
+
+    val formattedCoordinates: String?
+        get() = if (latitude != null && longitude != null) {
+            String.format(java.util.Locale.US, "%.4f, %.4f", latitude, longitude)
+        } else {
+            null
+        }
+}
+
+data class ResolvedPinAddress(
+    val latitude: Double,
+    val longitude: Double,
+    val suggestedStreet: String,
+    val area: String,
+    val city: String,
+    val state: String,
+    val postalCode: String,
+    val country: String,
+    val suggestedLandmark: String,
+    val nearestNeighborhoodId: String,
+    val sourceLabel: String
 )
 
 enum class PaymentMethod(val label: String, val subtitle: String) {

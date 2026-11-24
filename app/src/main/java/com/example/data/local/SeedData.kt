@@ -487,7 +487,14 @@ object SeedData {
             fullAddress = "Flat 402, Palm Grove Residency, 12th Main Rd, Indiranagar",
             landmark = "Near CMH Park Metro Gate 2",
             neighborhoodId = "indiranagar",
-            isDefault = true
+            isDefault = true,
+            area = "Indiranagar 12th Main",
+            city = "Bengaluru",
+            state = "Karnataka",
+            postalCode = "560038",
+            country = "India",
+            latitude = 12.9716,
+            longitude = 77.6466
         ),
         SavedAddress(
             id = "addr_work",
@@ -495,7 +502,14 @@ object SeedData {
             fullAddress = "WeWork Prestige Cube, Laskar Hosur Rd, Koramangala 4th Block",
             landmark = "Opposite Sony Signal",
             neighborhoodId = "koramangala",
-            isDefault = false
+            isDefault = false,
+            area = "Koramangala 4th Block",
+            city = "Bengaluru",
+            state = "Karnataka",
+            postalCode = "560034",
+            country = "India",
+            latitude = 12.9279,
+            longitude = 77.6271
         ),
         SavedAddress(
             id = "addr_other",
@@ -503,7 +517,14 @@ object SeedData {
             fullAddress = "B-14 Sea Breeze Apartments, 16th Road, Bandra West",
             landmark = "Behind Pali Market",
             neighborhoodId = "bandra_west",
-            isDefault = false
+            isDefault = false,
+            area = "Bandra West",
+            city = "Mumbai",
+            state = "Maharashtra",
+            postalCode = "400050",
+            country = "India",
+            latitude = 19.0544,
+            longitude = 72.8322
         )
     )
 

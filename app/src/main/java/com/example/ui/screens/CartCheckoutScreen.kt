@@ -90,7 +90,19 @@ import com.example.ui.theme.QuickKartThemeTokens
 fun CartCheckoutScreen(
     uiState: QuickKartUiState,
     onSelectAddress: (SavedAddress) -> Unit,
-    onAddAddress: (String, String, String, String) -> Unit,
+    onAddAddress: (
+        label: String,
+        fullAddress: String,
+        landmark: String,
+        neighborhoodId: String,
+        area: String,
+        city: String,
+        state: String,
+        postalCode: String,
+        country: String,
+        latitude: Double?,
+        longitude: Double?
+    ) -> Unit,
     onIncrementCart: (String, String) -> Unit,
     onDecrementCart: (String, String) -> Unit,
     onRemoveCartItem: (String, String) -> Unit,
@@ -363,8 +375,23 @@ fun CartCheckoutScreen(
                                                 text = addr.fullAddress,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = tokens.muted,
-                                                maxLines = 3
+                                                maxLines = 2
                                             )
+                                            if (addr.formattedLocationLine.isNotBlank()) {
+                                                Text(
+                                                    text = addr.formattedLocationLine,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = tokens.ink.copy(alpha = 0.78f),
+                                                    maxLines = 1
+                                                )
+                                            }
+                                            addr.formattedCoordinates?.let { coords ->
+                                                Text(
+                                                    text = "Pin: $coords",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = tokens.deliveryGreenDeep
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -904,8 +931,8 @@ fun CartCheckoutScreen(
             neighborhoods = uiState.neighborhoods,
             initialNeighborhoodId = uiState.selectedNeighborhood?.id ?: "indiranagar",
             onDismiss = { showAddAddressDialog = false },
-            onSave = { label, full, landmark, nId ->
-                onAddAddress(label, full, landmark, nId)
+            onSave = { label, full, landmark, nId, area, city, state, postal, country, lat, lng ->
+                onAddAddress(label, full, landmark, nId, area, city, state, postal, country, lat, lng)
                 showAddAddressDialog = false
             }
         )

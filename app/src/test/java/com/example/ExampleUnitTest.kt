@@ -16,6 +16,7 @@ import com.example.service.PdfReceiptService
 import com.example.ui.theme.QuickKartTypography
 import com.example.ui.theme.metricsForWidth
 import com.example.ui.theme.scaledQuickKartTypography
+import com.example.util.AddressPinResolver
 import com.example.util.NotificationHelper
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
@@ -232,5 +233,33 @@ class ExampleUnitTest {
         val creditAction = generateSupportDeskReply(openTicket, "Switch to Instant Credit")
         assertEquals(SupportTicketStatus.RESOLVED, creditAction.newStatus)
         assertTrue(creditAction.replyText.contains("₹${openTicket.affectedAmountInr}"))
+    }
+
+    @Test
+    fun addressPinResolver_generatesStateAreaCityPostalAndHubFromCoordinates() {
+        val indiranagarPin = AddressPinResolver.resolveFromCoordinateGrid(12.9718, 77.6462)
+        assertEquals("Bengaluru", indiranagarPin.city)
+        assertEquals("Karnataka", indiranagarPin.state)
+        assertEquals("India", indiranagarPin.country)
+        assertEquals("indiranagar", indiranagarPin.nearestNeighborhoodId)
+        assertTrue(indiranagarPin.postalCode.startsWith("560"))
+        assertTrue(indiranagarPin.area.isNotBlank())
+        assertTrue(indiranagarPin.suggestedStreet.isNotBlank())
+
+        val mumbaiPin = AddressPinResolver.resolveFromCoordinateGrid(19.0551, 72.8318)
+        assertEquals("Mumbai", mumbaiPin.city)
+        assertEquals("Maharashtra", mumbaiPin.state)
+        assertEquals("bandra_west", mumbaiPin.nearestNeighborhoodId)
+        assertTrue(mumbaiPin.postalCode.startsWith("400"))
+
+        val delhiPin = AddressPinResolver.resolveFromCoordinateGrid(28.5540, 77.2060)
+        assertEquals("New Delhi", delhiPin.city)
+        assertEquals("Delhi", delhiPin.state)
+        assertEquals("hauz_khas", delhiPin.nearestNeighborhoodId)
+        assertTrue(delhiPin.postalCode.startsWith("110"))
+
+        val seededHome = SeedData.savedAddresses.first()
+        assertTrue(seededHome.formattedLocationLine.contains("Karnataka"))
+        assertEquals("12.9716, 77.6466", seededHome.formattedCoordinates)
     }
 }

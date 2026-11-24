@@ -124,7 +124,19 @@ fun AccountHistoryScreen(
     onScreenZoomChange: (Int) -> Unit,
     onSetDefaultAddress: (String) -> Unit,
     onDeleteAddress: (String) -> Unit,
-    onAddAddress: (String, String, String, String) -> Unit,
+    onAddAddress: (
+        label: String,
+        fullAddress: String,
+        landmark: String,
+        neighborhoodId: String,
+        area: String,
+        city: String,
+        state: String,
+        postalCode: String,
+        country: String,
+        latitude: Double?,
+        longitude: Double?
+    ) -> Unit,
     onOpenSupportHub: () -> Unit,
     onOpenSupportForOrder: (OrderRecord) -> Unit,
     onSignOut: () -> Unit,
@@ -694,8 +706,8 @@ fun AccountHistoryScreen(
             neighborhoods = uiState.neighborhoods,
             initialNeighborhoodId = uiState.selectedNeighborhood?.id ?: "indiranagar",
             onDismiss = { showAddAddressDialog = false },
-            onSave = { label, full, landmark, nId ->
-                onAddAddress(label, full, landmark, nId)
+            onSave = { label, full, landmark, nId, area, city, state, postal, country, lat, lng ->
+                onAddAddress(label, full, landmark, nId, area, city, state, postal, country, lat, lng)
                 showAddAddressDialog = false
             }
         )
@@ -1017,6 +1029,20 @@ private fun SavedAddressRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = tokens.muted
                 )
+                if (address.formattedLocationLine.isNotBlank()) {
+                    Text(
+                        text = address.formattedLocationLine,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tokens.ink.copy(alpha = 0.8f)
+                    )
+                }
+                address.formattedCoordinates?.let { coords ->
+                    Text(
+                        text = "Pin: $coords • ${address.country}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tokens.deliveryGreenDeep
+                    )
+                }
             }
             if (canDelete) {
                 IconButton(onClick = onDelete) {

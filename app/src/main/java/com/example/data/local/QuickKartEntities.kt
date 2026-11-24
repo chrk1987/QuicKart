@@ -32,7 +32,14 @@ data class SavedAddressEntity(
     val fullAddress: String,
     val landmark: String,
     val neighborhoodId: String,
-    val isDefault: Boolean
+    val isDefault: Boolean,
+    val area: String = "",
+    val city: String = "",
+    val state: String = "",
+    val postalCode: String = "",
+    val country: String = "India",
+    val latitude: Double? = null,
+    val longitude: Double? = null
 ) {
     fun toDomain(): SavedAddress = SavedAddress(
         id = id,
@@ -40,7 +47,14 @@ data class SavedAddressEntity(
         fullAddress = fullAddress,
         landmark = landmark,
         neighborhoodId = neighborhoodId,
-        isDefault = isDefault
+        isDefault = isDefault,
+        area = area,
+        city = city,
+        state = state,
+        postalCode = postalCode,
+        country = country,
+        latitude = latitude,
+        longitude = longitude
     )
 
     companion object {
@@ -50,7 +64,14 @@ data class SavedAddressEntity(
             fullAddress = address.fullAddress,
             landmark = address.landmark,
             neighborhoodId = address.neighborhoodId,
-            isDefault = address.isDefault
+            isDefault = address.isDefault,
+            area = address.area,
+            city = address.city,
+            state = address.state,
+            postalCode = address.postalCode,
+            country = address.country,
+            latitude = address.latitude,
+            longitude = address.longitude
         )
     }
 }

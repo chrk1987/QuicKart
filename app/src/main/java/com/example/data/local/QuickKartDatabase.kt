@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         OrderEntity::class,
         SupportTicketEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class QuickKartDatabase : RoomDatabase() {
@@ -62,6 +62,18 @@ abstract class QuickKartDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE saved_addresses ADD COLUMN area TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE saved_addresses ADD COLUMN city TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE saved_addresses ADD COLUMN state TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE saved_addresses ADD COLUMN postalCode TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE saved_addresses ADD COLUMN country TEXT NOT NULL DEFAULT 'India'")
+                db.execSQL("ALTER TABLE saved_addresses ADD COLUMN latitude REAL")
+                db.execSQL("ALTER TABLE saved_addresses ADD COLUMN longitude REAL")
+            }
+        }
+
         fun getInstance(context: Context): QuickKartDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -69,7 +81,7 @@ abstract class QuickKartDatabase : RoomDatabase() {
                     QuickKartDatabase::class.java,
                     "quickkart_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { INSTANCE = it }
             }

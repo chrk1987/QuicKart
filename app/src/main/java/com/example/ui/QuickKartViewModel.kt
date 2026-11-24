@@ -459,7 +459,19 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch { repository.setDefaultAddress(addressId) }
     }
 
-    fun addAddress(label: String, fullAddress: String, landmark: String, neighborhoodId: String) {
+    fun addAddress(
+        label: String,
+        fullAddress: String,
+        landmark: String,
+        neighborhoodId: String,
+        area: String = "",
+        city: String = "",
+        state: String = "",
+        postalCode: String = "",
+        country: String = "India",
+        latitude: Double? = null,
+        longitude: Double? = null
+    ) {
         viewModelScope.launch {
             val newAddr = SavedAddress(
                 id = "addr_${System.currentTimeMillis()}",
@@ -467,9 +479,17 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
                 fullAddress = fullAddress.trim(),
                 landmark = landmark.trim(),
                 neighborhoodId = neighborhoodId,
-                isDefault = true
+                isDefault = true,
+                area = area.trim(),
+                city = city.trim(),
+                state = state.trim(),
+                postalCode = postalCode.trim(),
+                country = country.trim().ifBlank { "India" },
+                latitude = latitude,
+                longitude = longitude
             )
             repository.addAddress(newAddr)
+            repository.setSelectedNeighborhood(neighborhoodId)
         }
     }
 
@@ -593,7 +613,13 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 },
                 deliveryAddressLabel = address?.label ?: "Home",
-                deliveryAddressFull = address?.fullAddress ?: "${neighborhood.name}, ${neighborhood.city}",
+                deliveryAddressFull = if (address != null) {
+                    listOf(address.fullAddress, address.formattedLocationLine)
+                        .filter { it.isNotBlank() }
+                        .joinToString(", ")
+                } else {
+                    "${neighborhood.name}, ${neighborhood.city}"
+                },
                 deliveryInstructions = draft.selectedInstructions.toList(),
                 riderNote = draft.riderNote.trim(),
                 paymentMethod = draft.paymentMethod,

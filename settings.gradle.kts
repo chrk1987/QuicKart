@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "QuickKart"
 
-include(":app")
+include(":app", ":rider")
