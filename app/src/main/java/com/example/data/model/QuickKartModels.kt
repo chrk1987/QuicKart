@@ -16,10 +16,15 @@ data class Neighborhood(
 enum class ProductCategory(val label: String, val shortLabel: String) {
     ALL("All Essentials", "All"),
     DAIRY_EGGS("Dairy & Eggs", "Dairy"),
-    FRESH_PRODUCE("Fresh Produce", "Produce"),
+    FRUITS("Fruits", "Fruits"),
+    // Enum name kept for saved orders/carts; now holds vegetables & greens (fruits have their own category).
+    FRESH_PRODUCE("Vegetables", "Veggies"),
     BAKERY_BREAD("Bakery & Bread", "Bakery"),
     COLD_BREW_JUICES("Cold Brew & Juices", "Drinks"),
-    SNACKS_PANTRY("Snacks & Pantry", "Snacks")
+    SNACKS_PANTRY("Snacks & Pantry", "Snacks"),
+    PERSONAL_CARE("Personal Care", "Care"),
+    HOUSEHOLD("Household", "Home"),
+    ELECTRONICS("Electronics", "Gadgets")
 }
 
 enum class ProductArtworkType {
@@ -40,7 +45,19 @@ enum class ProductArtworkType {
     KETTLE_CHIPS,
     MAKHANA,
     DARK_CHOCOLATE,
-    PEANUT_BUTTER
+    PEANUT_BUTTER,
+    // Original vector artwork drawn in code (no photos / third-party images).
+    APPLE,
+    GRAPES,
+    POMEGRANATE,
+    CHARGER,
+    EARBUDS,
+    BATTERIES,
+    USB_CABLE,
+    TOOTHPASTE,
+    PUMP_BOTTLE,
+    ROLL_PACK,
+    TRASH_BAGS
 }
 
 data class ProductVariant(

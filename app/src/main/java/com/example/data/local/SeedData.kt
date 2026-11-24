@@ -233,7 +233,7 @@ object SeedData {
             id = "prod_hass_avocado",
             name = "Ripe Hass Avocados",
             brand = "Trikaya Fresh",
-            category = ProductCategory.FRESH_PRODUCE,
+            category = ProductCategory.FRUITS,
             description = "Creamy, buttery Hass avocados hand-sorted for immediate slicing onto sourdough toast or guacamole.",
             badgeText = "READY TO EAT",
             rating = 4.7f,
@@ -251,7 +251,7 @@ object SeedData {
             id = "prod_organic_bananas",
             name = "Robusta Baby Bananas",
             brand = "Sahyadri Farms",
-            category = ProductCategory.FRESH_PRODUCE,
+            category = ProductCategory.FRUITS,
             description = "Naturally ripened sweet Robusta bananas harvested from residue-free orchards for morning smoothies.",
             badgeText = "FARM PICK",
             rating = 4.6f,
@@ -477,6 +477,231 @@ object SeedData {
                 ProductVariant("v_pb_1000", "1 kg Tub", 369, 449)
             ),
             highlights = listOf("100% roasted peanuts", "Zero added sugar", "Keto friendly")
+        ),
+        // ── New categories (house brand "QuickKart Basics"; artwork drawn in code) ──
+        Product(
+            id = "prod_shimla_apples",
+            name = "Crisp Shimla Apples",
+            brand = "QuickKart Basics",
+            category = ProductCategory.FRUITS,
+            description = "Juicy, crunchy hill apples hand-picked and sorted for size and sweetness.",
+            badgeText = "FARM FRESH",
+            rating = 4.7f,
+            ratingCount = 1260,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.APPLE,
+            accentColor = Color(0xFFDC2626),
+            variants = listOf(
+                ProductVariant("v_apple_4", "4 pcs (~600 g)", 149, 180),
+                ProductVariant("v_apple_1kg", "1 kg Pack", 219, 260)
+            ),
+            highlights = listOf("Hand-sorted", "Crunchy & sweet", "Washed & waxed-free")
+        ),
+        Product(
+            id = "prod_green_grapes",
+            name = "Green Seedless Grapes",
+            brand = "QuickKart Basics",
+            category = ProductCategory.FRUITS,
+            description = "Sweet seedless grapes from Nashik vineyards, cold-chain packed in a vented punnet.",
+            badgeText = null,
+            rating = 4.6f,
+            ratingCount = 840,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.GRAPES,
+            accentColor = Color(0xFF65A30D),
+            variants = listOf(
+                ProductVariant("v_grapes_500", "500 g Punnet", 89, 110)
+            ),
+            highlights = listOf("Seedless", "Cold-chain packed", "Snack-ready")
+        ),
+        Product(
+            id = "prod_pomegranate",
+            name = "Ruby Pomegranate",
+            brand = "QuickKart Basics",
+            category = ProductCategory.FRUITS,
+            description = "Deep-red arils with a sweet-tart taste, rich in antioxidants.",
+            badgeText = null,
+            rating = 4.5f,
+            ratingCount = 610,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.POMEGRANATE,
+            accentColor = Color(0xFFBE123C),
+            variants = listOf(
+                ProductVariant("v_pom_2", "2 pcs (~500 g)", 139, 170)
+            ),
+            highlights = listOf("Deep-red arils", "Antioxidant rich", "Quality checked")
+        ),
+        Product(
+            id = "prod_toothpaste",
+            name = "Fluoride Cavity-Care Toothpaste",
+            brand = "QuickKart Basics",
+            category = ProductCategory.PERSONAL_CARE,
+            description = "Everyday fluoride toothpaste with mint freshness for stronger enamel.",
+            badgeText = null,
+            rating = 4.5f,
+            ratingCount = 930,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.TOOTHPASTE,
+            accentColor = Color(0xFF2563EB),
+            variants = listOf(
+                ProductVariant("v_paste_150", "150 g Tube", 99, 115)
+            ),
+            highlights = listOf("Fluoride protection", "Fresh mint", "Daily use")
+        ),
+        Product(
+            id = "prod_hand_wash",
+            name = "Gentle Hand Wash",
+            brand = "QuickKart Basics",
+            category = ProductCategory.PERSONAL_CARE,
+            description = "pH-balanced liquid hand wash with aloe that cleans without drying.",
+            badgeText = null,
+            rating = 4.6f,
+            ratingCount = 720,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.PUMP_BOTTLE,
+            accentColor = Color(0xFF0D9488),
+            variants = listOf(
+                ProductVariant("v_handwash_250", "250 ml Pump", 89, 105),
+                ProductVariant("v_handwash_750", "750 ml Refill", 189, 230)
+            ),
+            highlights = listOf("pH balanced", "With aloe", "Soap-free formula")
+        ),
+        Product(
+            id = "prod_shampoo",
+            name = "Aloe Vera Daily Shampoo",
+            brand = "QuickKart Basics",
+            category = ProductCategory.PERSONAL_CARE,
+            description = "Mild sulphate-free shampoo for everyday use on all hair types.",
+            badgeText = "SULPHATE-FREE",
+            rating = 4.4f,
+            ratingCount = 510,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.PUMP_BOTTLE,
+            accentColor = Color(0xFF16A34A),
+            variants = listOf(
+                ProductVariant("v_shampoo_340", "340 ml Bottle", 199, 240)
+            ),
+            highlights = listOf("Sulphate-free", "All hair types", "Daily use")
+        ),
+        Product(
+            id = "prod_dishwash",
+            name = "Lemon Dishwash Liquid",
+            brand = "QuickKart Basics",
+            category = ProductCategory.HOUSEHOLD,
+            description = "Grease-cutting dishwash gel with lemon; a few drops clean a full sink.",
+            badgeText = null,
+            rating = 4.6f,
+            ratingCount = 1110,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.PUMP_BOTTLE,
+            accentColor = Color(0xFFEAB308),
+            variants = listOf(
+                ProductVariant("v_dish_500", "500 ml Bottle", 109, 130)
+            ),
+            highlights = listOf("Cuts grease", "Lemon fresh", "Gentle on hands")
+        ),
+        Product(
+            id = "prod_kitchen_towels",
+            name = "Kitchen Towel Rolls",
+            brand = "QuickKart Basics",
+            category = ProductCategory.HOUSEHOLD,
+            description = "Absorbent 2-ply kitchen towels for spills and wipe-downs.",
+            badgeText = null,
+            rating = 4.4f,
+            ratingCount = 460,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.ROLL_PACK,
+            accentColor = Color(0xFF64748B),
+            variants = listOf(
+                ProductVariant("v_towel_2", "2 Rolls", 149, 180)
+            ),
+            highlights = listOf("2-ply", "Extra absorbent", "Food safe")
+        ),
+        Product(
+            id = "prod_garbage_bags",
+            name = "Garbage Bags (Medium)",
+            brand = "QuickKart Basics",
+            category = ProductCategory.HOUSEHOLD,
+            description = "Leak-proof medium garbage bags on a tear-off roll.",
+            badgeText = null,
+            rating = 4.3f,
+            ratingCount = 380,
+            deliveryMinutes = 8,
+            artworkType = ProductArtworkType.TRASH_BAGS,
+            accentColor = Color(0xFF1F2937),
+            variants = listOf(
+                ProductVariant("v_bags_30", "30 Bags", 99, 120)
+            ),
+            highlights = listOf("Leak-proof", "Tear-off roll", "19 x 21 inch")
+        ),
+        Product(
+            id = "prod_fast_charger",
+            name = "20W USB-C Fast Charger",
+            brand = "QuickKart Basics",
+            category = ProductCategory.ELECTRONICS,
+            description = "Compact 20W USB-C power adapter with fast charging for phones and earbuds.",
+            badgeText = "BIS CERTIFIED",
+            rating = 4.5f,
+            ratingCount = 690,
+            deliveryMinutes = 12,
+            artworkType = ProductArtworkType.CHARGER,
+            accentColor = Color(0xFF334155),
+            variants = listOf(
+                ProductVariant("v_charger_20w", "20W Adapter", 499, 899)
+            ),
+            highlights = listOf("20W fast charge", "Over-heat protection", "6-month warranty")
+        ),
+        Product(
+            id = "prod_usb_cable",
+            name = "Braided USB-C Cable (1 m)",
+            brand = "QuickKart Basics",
+            category = ProductCategory.ELECTRONICS,
+            description = "Durable nylon-braided USB-C to USB-C cable for charging and data.",
+            badgeText = null,
+            rating = 4.4f,
+            ratingCount = 520,
+            deliveryMinutes = 12,
+            artworkType = ProductArtworkType.USB_CABLE,
+            accentColor = Color(0xFF475569),
+            variants = listOf(
+                ProductVariant("v_cable_1m", "1 m", 249, 399)
+            ),
+            highlights = listOf("Nylon braided", "60W charging", "Data transfer")
+        ),
+        Product(
+            id = "prod_earbuds",
+            name = "Wireless Earbuds",
+            brand = "QuickKart Basics",
+            category = ProductCategory.ELECTRONICS,
+            description = "Bluetooth earbuds with a pocket charging case and up to 24 hours of playback.",
+            badgeText = "NEW",
+            rating = 4.3f,
+            ratingCount = 410,
+            deliveryMinutes = 12,
+            artworkType = ProductArtworkType.EARBUDS,
+            accentColor = Color(0xFF0F172A),
+            variants = listOf(
+                ProductVariant("v_earbuds", "1 Pair + Case", 1299, 2499)
+            ),
+            highlights = listOf("Up to 24 h playback", "Bluetooth 5.3", "Touch controls")
+        ),
+        Product(
+            id = "prod_aa_batteries",
+            name = "AA Alkaline Batteries",
+            brand = "QuickKart Basics",
+            category = ProductCategory.ELECTRONICS,
+            description = "Long-lasting 1.5V alkaline batteries for remotes, toys and clocks.",
+            badgeText = null,
+            rating = 4.6f,
+            ratingCount = 980,
+            deliveryMinutes = 12,
+            artworkType = ProductArtworkType.BATTERIES,
+            accentColor = Color(0xFFCA8A04),
+            variants = listOf(
+                ProductVariant("v_aa_4", "Pack of 4", 129, 160),
+                ProductVariant("v_aa_8", "Pack of 8", 239, 300)
+            ),
+            highlights = listOf("Long lasting", "Leak resistant", "1.5V")
         )
     )
 

@@ -317,6 +317,150 @@ fun ProductArtwork(
                         cornerRadius = CornerRadius(6f, 6f)
                     )
                 }
+
+                // ── Original flat artwork for the newer categories (no photos / third-party art) ──
+
+                ProductArtworkType.APPLE -> {
+                    drawCircle(accentColor, radius = w * 0.26f, center = Offset(cx - w * 0.07f, h * 0.56f))
+                    drawCircle(accentColor, radius = w * 0.26f, center = Offset(cx + w * 0.07f, h * 0.56f))
+                    drawCircle(Color.White.copy(alpha = 0.35f), radius = w * 0.06f, center = Offset(cx - w * 0.16f, h * 0.46f))
+                    drawLine(Color(0xFF78350F), Offset(cx, h * 0.32f), Offset(cx + w * 0.03f, h * 0.18f), 6f, StrokeCap.Round)
+                    drawOval(
+                        color = Color(0xFF22C55E),
+                        topLeft = Offset(cx + w * 0.03f, h * 0.16f),
+                        size = Size(w * 0.16f, h * 0.08f)
+                    )
+                }
+
+                ProductArtworkType.GRAPES -> {
+                    val r = w * 0.085f
+                    listOf(
+                        -1.5f to 0.36f, -0.5f to 0.36f, 0.5f to 0.36f, 1.5f to 0.36f,
+                        -1f to 0.50f, 0f to 0.50f, 1f to 0.50f,
+                        -0.5f to 0.64f, 0.5f to 0.64f,
+                        0f to 0.77f
+                    ).forEach { (dx, fy) ->
+                        drawCircle(accentColor, radius = r, center = Offset(cx + dx * r * 1.9f, h * fy))
+                        drawCircle(Color.White.copy(alpha = 0.35f), radius = r * 0.3f, center = Offset(cx + dx * r * 1.9f - r * 0.3f, h * fy - r * 0.3f))
+                    }
+                    drawLine(Color(0xFF78350F), Offset(cx, h * 0.27f), Offset(cx + w * 0.06f, h * 0.14f), 5f, StrokeCap.Round)
+                }
+
+                ProductArtworkType.POMEGRANATE -> {
+                    drawCircle(accentColor, radius = w * 0.28f, center = Offset(cx, h * 0.56f))
+                    val crown = Path().apply {
+                        moveTo(cx - w * 0.10f, h * 0.30f)
+                        lineTo(cx - w * 0.07f, h * 0.20f)
+                        lineTo(cx - w * 0.02f, h * 0.27f)
+                        lineTo(cx + w * 0.02f, h * 0.19f)
+                        lineTo(cx + w * 0.06f, h * 0.27f)
+                        lineTo(cx + w * 0.10f, h * 0.20f)
+                        lineTo(cx + w * 0.11f, h * 0.30f)
+                        close()
+                    }
+                    drawPath(crown, color = accentColor)
+                    drawCircle(Color.White.copy(alpha = 0.3f), radius = w * 0.07f, center = Offset(cx - w * 0.12f, h * 0.46f))
+                }
+
+                ProductArtworkType.CHARGER -> {
+                    drawRoundRect(
+                        color = Color.White,
+                        topLeft = Offset(w * 0.26f, h * 0.32f),
+                        size = Size(w * 0.48f, h * 0.48f),
+                        cornerRadius = CornerRadius(18f, 18f)
+                    )
+                    drawRoundRect(
+                        color = accentColor,
+                        topLeft = Offset(w * 0.26f, h * 0.32f),
+                        size = Size(w * 0.48f, h * 0.48f),
+                        cornerRadius = CornerRadius(18f, 18f),
+                        style = Stroke(width = 4f)
+                    )
+                    drawRoundRect(accentColor, Offset(w * 0.38f, h * 0.18f), Size(w * 0.06f, h * 0.15f), CornerRadius(3f, 3f))
+                    drawRoundRect(accentColor, Offset(w * 0.56f, h * 0.18f), Size(w * 0.06f, h * 0.15f), CornerRadius(3f, 3f))
+                    drawRoundRect(Color(0xFF141414), Offset(cx - w * 0.08f, h * 0.60f), Size(w * 0.16f, h * 0.06f), CornerRadius(6f, 6f))
+                }
+
+                ProductArtworkType.USB_CABLE -> {
+                    val coil = Path().apply {
+                        moveTo(w * 0.22f, h * 0.30f)
+                        cubicTo(w * 0.80f, h * 0.20f, w * 0.20f, h * 0.70f, w * 0.78f, h * 0.70f)
+                    }
+                    drawPath(coil, color = accentColor, style = Stroke(width = 9f, cap = StrokeCap.Round))
+                    drawRoundRect(Color(0xFF141414), Offset(w * 0.12f, h * 0.24f), Size(w * 0.14f, h * 0.12f), CornerRadius(6f, 6f))
+                    drawRoundRect(Color(0xFF9CA3AF), Offset(w * 0.06f, h * 0.27f), Size(w * 0.07f, h * 0.06f), CornerRadius(3f, 3f))
+                    drawRoundRect(Color(0xFF141414), Offset(w * 0.74f, h * 0.64f), Size(w * 0.14f, h * 0.12f), CornerRadius(6f, 6f))
+                    drawRoundRect(Color(0xFF9CA3AF), Offset(w * 0.87f, h * 0.67f), Size(w * 0.07f, h * 0.06f), CornerRadius(3f, 3f))
+                }
+
+                ProductArtworkType.EARBUDS -> {
+                    drawRoundRect(
+                        color = Color.White,
+                        topLeft = Offset(w * 0.20f, h * 0.44f),
+                        size = Size(w * 0.60f, h * 0.38f),
+                        cornerRadius = CornerRadius(40f, 40f)
+                    )
+                    drawRoundRect(
+                        color = accentColor.copy(alpha = 0.25f),
+                        topLeft = Offset(w * 0.20f, h * 0.44f),
+                        size = Size(w * 0.60f, h * 0.38f),
+                        cornerRadius = CornerRadius(40f, 40f),
+                        style = Stroke(width = 4f)
+                    )
+                    drawLine(accentColor.copy(alpha = 0.25f), Offset(w * 0.20f, h * 0.58f), Offset(w * 0.80f, h * 0.58f), 3f)
+                    listOf(cx - w * 0.14f, cx + w * 0.14f).forEach { bx ->
+                        drawCircle(accentColor, radius = w * 0.09f, center = Offset(bx, h * 0.30f))
+                        drawRoundRect(accentColor, Offset(bx - w * 0.03f, h * 0.30f), Size(w * 0.06f, h * 0.16f), CornerRadius(8f, 8f))
+                    }
+                    drawCircle(Color(0xFF22C55E), radius = w * 0.02f, center = Offset(cx, h * 0.72f))
+                }
+
+                ProductArtworkType.BATTERIES -> {
+                    listOf(-1.5f, -0.5f, 0.5f, 1.5f).forEach { i ->
+                        val left = cx + i * w * 0.15f - w * 0.06f
+                        drawRoundRect(Color(0xFF141414), Offset(left, h * 0.26f), Size(w * 0.12f, h * 0.56f), CornerRadius(8f, 8f))
+                        drawRoundRect(accentColor, Offset(left, h * 0.26f), Size(w * 0.12f, h * 0.20f), CornerRadius(8f, 8f))
+                        drawRoundRect(Color(0xFF9CA3AF), Offset(left + w * 0.035f, h * 0.21f), Size(w * 0.05f, h * 0.06f), CornerRadius(3f, 3f))
+                    }
+                }
+
+                ProductArtworkType.TOOTHPASTE -> {
+                    val tube = Path().apply {
+                        moveTo(w * 0.16f, h * 0.42f)
+                        lineTo(w * 0.70f, h * 0.36f)
+                        lineTo(w * 0.70f, h * 0.70f)
+                        lineTo(w * 0.16f, h * 0.64f)
+                        close()
+                    }
+                    drawPath(tube, color = Color.White)
+                    drawPath(tube, color = accentColor, style = Stroke(width = 4f))
+                    drawRoundRect(accentColor, Offset(w * 0.26f, h * 0.45f), Size(w * 0.34f, h * 0.15f), CornerRadius(6f, 6f))
+                    drawRoundRect(accentColor, Offset(w * 0.70f, h * 0.44f), Size(w * 0.16f, h * 0.18f), CornerRadius(6f, 6f))
+                }
+
+                ProductArtworkType.PUMP_BOTTLE -> {
+                    drawRoundRect(accentColor, Offset(w * 0.28f, h * 0.36f), Size(w * 0.44f, h * 0.48f), CornerRadius(16f, 16f))
+                    drawRoundRect(Color.White.copy(alpha = 0.85f), Offset(w * 0.33f, h * 0.50f), Size(w * 0.34f, h * 0.20f), CornerRadius(6f, 6f))
+                    drawRoundRect(Color(0xFF141414), Offset(cx - w * 0.05f, h * 0.22f), Size(w * 0.10f, h * 0.15f), CornerRadius(4f, 4f))
+                    drawRoundRect(Color(0xFF141414), Offset(cx - w * 0.05f, h * 0.18f), Size(w * 0.22f, h * 0.06f), CornerRadius(4f, 4f))
+                }
+
+                ProductArtworkType.ROLL_PACK -> {
+                    listOf(cx - w * 0.14f, cx + w * 0.14f).forEach { rx ->
+                        drawRoundRect(Color.White, Offset(rx - w * 0.13f, h * 0.24f), Size(w * 0.26f, h * 0.58f), CornerRadius(14f, 14f))
+                        drawRoundRect(accentColor.copy(alpha = 0.6f), Offset(rx - w * 0.13f, h * 0.24f), Size(w * 0.26f, h * 0.58f), CornerRadius(14f, 14f), style = Stroke(width = 3f))
+                        drawOval(Color(0xFFE5E7EB), Offset(rx - w * 0.13f, h * 0.20f), Size(w * 0.26f, h * 0.10f))
+                        drawOval(accentColor.copy(alpha = 0.5f), Offset(rx - w * 0.04f, h * 0.225f), Size(w * 0.08f, h * 0.045f))
+                    }
+                }
+
+                ProductArtworkType.TRASH_BAGS -> {
+                    drawOval(accentColor, Offset(w * 0.18f, h * 0.40f), Size(w * 0.64f, h * 0.30f))
+                    drawRoundRect(accentColor, Offset(w * 0.18f, h * 0.38f), Size(w * 0.64f, h * 0.18f), CornerRadius(6f, 6f))
+                    drawOval(Color(0xFF374151), Offset(w * 0.40f, h * 0.36f), Size(w * 0.20f, h * 0.30f))
+                    drawOval(Color(0xFF9CA3AF), Offset(w * 0.46f, h * 0.44f), Size(w * 0.08f, h * 0.14f))
+                    drawRoundRect(Color(0xFFFFD400), Offset(w * 0.22f, h * 0.70f), Size(w * 0.56f, h * 0.06f), CornerRadius(6f, 6f))
+                }
             }
         }
     }

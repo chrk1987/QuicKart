@@ -20,11 +20,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BakeryDining
+import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Cookie
 import androidx.compose.material.icons.rounded.Eco
 import androidx.compose.material.icons.rounded.Egg
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.LocalCafe
+import androidx.compose.material.icons.rounded.Sanitizer
 import androidx.compose.material.icons.rounded.ShoppingBasket
+import androidx.compose.material.icons.rounded.Spa
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -48,7 +52,11 @@ import com.example.util.itemCountLabel
 fun ProductCategory.icon(): ImageVector = when (this) {
     ProductCategory.ALL -> Icons.Rounded.ShoppingBasket
     ProductCategory.DAIRY_EGGS -> Icons.Rounded.Egg
+    ProductCategory.FRUITS -> Icons.Rounded.Spa
     ProductCategory.FRESH_PRODUCE -> Icons.Rounded.Eco
+    ProductCategory.PERSONAL_CARE -> Icons.Rounded.Sanitizer
+    ProductCategory.HOUSEHOLD -> Icons.Rounded.CleaningServices
+    ProductCategory.ELECTRONICS -> Icons.Rounded.Headphones
     ProductCategory.BAKERY_BREAD -> Icons.Rounded.BakeryDining
     ProductCategory.COLD_BREW_JUICES -> Icons.Rounded.LocalCafe
     ProductCategory.SNACKS_PANTRY -> Icons.Rounded.Cookie
