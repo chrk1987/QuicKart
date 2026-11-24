@@ -359,7 +359,7 @@ private fun SupportHubContent(
             item {
                 Card(
                     shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(containerColor = tokens.deliveryGreenDeep),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF141414) /* brand black card */),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -559,7 +559,7 @@ private fun SupportHubContent(
                                     ) {
                                         Text(
                                             text = "Raise ${faq.linkedCategory.label} Request →",
-                                            color = tokens.deliveryGreenDeep,
+                                            color = tokens.ink,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
@@ -706,7 +706,7 @@ private fun SupportTicketSummaryCard(
             Text(
                 text = ticket.resolutionSummary,
                 style = MaterialTheme.typography.labelMedium,
-                color = tokens.deliveryGreenDeep,
+                color = if (ticket.status == SupportTicketStatus.RESOLVED) tokens.deliveryGreenDeep else tokens.ink,
                 fontWeight = FontWeight.SemiBold
             )
 
@@ -980,8 +980,8 @@ private fun SupportIssueWizardContent(
                                             }
                                         },
                                         colors = CheckboxDefaults.colors(
-                                            checkedColor = tokens.deliveryGreenDeep,
-                                            checkmarkColor = Color.White
+                                            checkedColor = tokens.brandYellow,
+                                            checkmarkColor = tokens.onBrandYellow
                                         )
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
@@ -1191,7 +1191,7 @@ private fun SupportIssueWizardContent(
                                         selected = selected,
                                         onClick = { selectedResolution = option },
                                         colors = RadioButtonDefaults.colors(
-                                            selectedColor = tokens.deliveryGreenDeep
+                                            selectedColor = tokens.ink
                                         )
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
@@ -1238,8 +1238,8 @@ private fun SupportIssueWizardContent(
                     enabled = !needsItemPick,
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = tokens.deliveryGreenDeep,
-                        contentColor = Color.White
+                        containerColor = tokens.brandYellow,
+                        contentColor = tokens.onBrandYellow
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1358,13 +1358,13 @@ private fun SupportTicketThreadContent(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Surface(
-                                color = tokens.deliveryGreenSoft,
+                                color = if (ticket.status == SupportTicketStatus.RESOLVED) tokens.deliveryGreenSoft else tokens.surfaceElevated,
                                 shape = RoundedCornerShape(50)
                             ) {
                                 Text(
                                     text = ticket.resolutionSummary,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = tokens.deliveryGreenDeep,
+                                    color = if (ticket.status == SupportTicketStatus.RESOLVED) tokens.deliveryGreenDeep else tokens.ink,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                 )
@@ -1396,13 +1396,13 @@ private fun SupportTicketThreadContent(
                                     Icon(
                                         imageVector = Icons.Rounded.CheckCircle,
                                         contentDescription = null,
-                                        tint = tokens.deliveryGreenDeep,
+                                        tint = tokens.ink,
                                         modifier = Modifier.size(metrics.iconSmall)
                                     )
                                     Spacer(Modifier.width(4.dp))
                                     Text(
                                         text = "Mark Resolved",
-                                        color = tokens.deliveryGreenDeep,
+                                        color = tokens.ink,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -1556,8 +1556,8 @@ private fun SupportTicketThreadContent(
                         enabled = replyDraft.isNotBlank(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = tokens.deliveryGreenDeep,
-                            contentColor = Color.White
+                            containerColor = tokens.brandYellow,
+                            contentColor = tokens.onBrandYellow
                         ),
                         modifier = Modifier
                             .defaultMinSize(minWidth = 52.dp, minHeight = 52.dp)
@@ -1587,7 +1587,7 @@ private fun SupportMessageBubble(message: SupportMessage) {
         horizontalArrangement = if (message.isUser) Arrangement.End else Arrangement.Start
     ) {
         Surface(
-            color = if (message.isUser) tokens.deliveryGreenDeep else tokens.surface,
+            color = if (message.isUser) tokens.brandYellow else tokens.surface,
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
@@ -1605,19 +1605,19 @@ private fun SupportMessageBubble(message: SupportMessage) {
                     Text(
                         text = "QuickKart Care Desk",
                         style = MaterialTheme.typography.labelSmall,
-                        color = tokens.deliveryGreenDeep,
+                        color = tokens.ink,
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (message.isUser) Color.White else tokens.ink
+                    color = if (message.isUser) tokens.onBrandYellow else tokens.ink
                 )
                 Text(
                     text = timeLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (message.isUser) Color.White.copy(alpha = 0.72f) else tokens.muted,
+                    color = if (message.isUser) tokens.onBrandYellow.copy(alpha = 0.7f) else tokens.muted,
                     modifier = Modifier.align(Alignment.End)
                 )
             }
