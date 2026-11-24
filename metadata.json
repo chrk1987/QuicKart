@@ -1,0 +1,6 @@
+{
+  "name": "QuickKart",
+  "description": "Hyperlocal 8-minute grocery and daily essentials delivery app with voice search, live order tracking, analytics, and PDF receipts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
