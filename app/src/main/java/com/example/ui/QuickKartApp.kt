@@ -1,5 +1,13 @@
 package com.example.ui
 
+import com.example.ui.screens.CategoriesScreen
+
+import com.example.ui.components.LiveOrderBar
+
+import androidx.compose.material.icons.outlined.GridView
+
+import androidx.compose.material.icons.rounded.GridView
+
 import androidx.compose.foundation.isSystemInDarkTheme
 
 import androidx.compose.foundation.layout.navigationBars
@@ -108,7 +116,12 @@ const val ROUTE_SUPPORT = "support"
 const val ROUTE_ACCOUNT_SECTION = "account/{section}"
 
 /** Screens pushed on top of a tab: they show a back arrow and hide the bottom navigation. */
-private val SUB_SCREEN_ROUTES = setOf(ROUTE_SUPPORT, ROUTE_ACCOUNT_SECTION, BottomTab.ORDERS.route)
+private val SUB_SCREEN_ROUTES = setOf(
+    ROUTE_SUPPORT,
+    ROUTE_ACCOUNT_SECTION,
+    BottomTab.ORDERS.route,
+    BottomTab.TRACK.route
+)
 
 @Composable
 fun QuickKartApp(
@@ -232,15 +245,10 @@ fun QuickKartApp(
             }
         }
 
-        val showTrackTab = uiState.activeOrder != null || currentRoute == BottomTab.TRACK.route
-        val visibleTabs = remember(showTrackTab) {
-            buildList {
-                add(BottomTab.HOME)
-                add(BottomTab.CART)
-                if (showTrackTab) add(BottomTab.TRACK)
-                // Orders is no longer a footer tab; it is reached from Account.
-                add(BottomTab.ACCOUNT)
-            }
+        // Four fixed tabs so the bar never changes shape. Live tracking is reached from the
+        // floating live-order bar (and opens as a screen with a back arrow); Orders lives in Account.
+        val visibleTabs = remember {
+            listOf(BottomTab.HOME, BottomTab.CATEGORIES, BottomTab.CART, BottomTab.ACCOUNT)
         }
 
         fun navigateToTab(tab: BottomTab) {
@@ -290,6 +298,16 @@ fun QuickKartApp(
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                 bottomBar = {
+                  val liveOrder = uiState.activeOrder
+                  Column {
+                    // Floating live-order bar above the tabs while an order is active (opens Track).
+                    if (liveOrder != null && showTopLevelNav) {
+                        LiveOrderBar(
+                            order = liveOrder,
+                            onOpenTracking = { navigateToTab(BottomTab.TRACK) },
+                            modifier = if (useNavRail) Modifier.navigationBarsPadding() else Modifier
+                        )
+                    }
                     if (showTopLevelNav && !useNavRail) {
                         // Compact bar: 64dp instead of Material's 80dp so icons sit lower with less empty space.
                         val navBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -332,6 +350,7 @@ fun QuickKartApp(
                             }
                         }
                     }
+                  }
                 }
             ) { innerPadding ->
                 // When the bottom tab bar is hidden (sub-screens, nav-rail layouts) nothing else
@@ -492,7 +511,26 @@ fun QuickKartApp(
                             )
                         }
 
+                        composable(BottomTab.CATEGORIES.route) {
+                            CategoriesScreen(
+                                uiState = uiState,
+                                onSelectCategory = { category ->
+                                    viewModel.selectCategory(category)
+                                    navigateToTab(BottomTab.HOME)
+                                }
+                            )
+                        }
+
                         composable(BottomTab.TRACK.route) {
+                          Column(modifier = Modifier.fillMaxSize().background(tokens.background)) {
+                            AccountSubScreenTopBar(
+                                title = "Track order",
+                                onBack = {
+                                    if (!navController.popBackStack()) navigateToTab(BottomTab.HOME)
+                                },
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                            Box(modifier = Modifier.weight(1f)) {
                             LiveTrackingScreen(
                                 order = uiState.latestTrackableOrder,
                                 notificationsEnabled = uiState.preferences.notificationsEnabled,
@@ -510,6 +548,8 @@ fun QuickKartApp(
                                     viewModel.cancelOrder(order) { msg -> showToast(msg) }
                                 }
                             )
+                            }
+                          }
                         }
 
                         composable(BottomTab.ORDERS.route) {
@@ -615,6 +655,7 @@ private fun TabNavIcon(
     val icon = when (tab) {
         BottomTab.HOME -> if (selected) Icons.Rounded.Home else Icons.Outlined.Home
         BottomTab.CART -> if (selected) Icons.Rounded.ShoppingCart else Icons.Outlined.ShoppingCart
+        BottomTab.CATEGORIES -> if (selected) Icons.Rounded.GridView else Icons.Outlined.GridView
         BottomTab.TRACK -> if (selected) Icons.Rounded.DeliveryDining else Icons.Outlined.DeliveryDining
         BottomTab.ORDERS -> if (selected) Icons.Rounded.ReceiptLong else Icons.Outlined.ReceiptLong
         BottomTab.ACCOUNT -> if (selected) Icons.Rounded.Person else Icons.Outlined.Person

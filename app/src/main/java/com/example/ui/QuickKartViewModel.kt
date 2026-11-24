@@ -63,6 +63,7 @@ private fun String.sum(): Int = sumOf { it.digitToIntOrNull() ?: 0 }
 
 enum class BottomTab(val route: String, val label: String) {
     HOME("home", "Home"),
+    CATEGORIES("categories", "Categories"),
     CART("cart", "Cart"),
     TRACK("track", "Track"),
     ORDERS("orders", "Orders"),
