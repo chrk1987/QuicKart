@@ -374,7 +374,7 @@ fun OrderPlacedCelebrationOverlay(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Sending order to Dark Store Pod",
+                                text = "Sending your order to the store",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = tokens.brandYellow,
                                 fontWeight = FontWeight.Bold

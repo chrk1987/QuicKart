@@ -8,6 +8,9 @@ import com.example.ui.referralCodeFor
 import com.example.util.cancellationRefundInr
 import com.example.util.cardLast4ToStore
 import com.example.util.isCancellable
+import com.example.util.arrivalByLabel
+import com.example.util.etaMinutesLabel
+import com.example.util.etaMinutesLeft
 import com.example.util.itemCountLabel
 import com.example.util.nearestLockedOffer
 import com.example.util.pickBestOffer
@@ -122,6 +125,28 @@ class CommerceRulesTest {
     }
 
     // ── Copy ──
+
+    // ── Customer ETA wording ──
+
+    @Test
+    fun eta_isWholeMinutesRoundedUp_neverBelowOne() {
+        assertEquals(1, etaMinutesLeft(0))
+        assertEquals(1, etaMinutesLeft(59))
+        assertEquals(1, etaMinutesLeft(60))
+        assertEquals(2, etaMinutesLeft(61))
+        assertEquals(7, etaMinutesLeft(375))
+        assertEquals("7 min", etaMinutesLabel(375))
+    }
+
+    @Test
+    fun arrivalLabel_showsClockTimeNotCountdown() {
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(2026, java.util.Calendar.NOVEMBER, 25, 23, 58, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val label = arrivalByLabel(remainingSeconds = 7 * 60, nowMillis = calendar.timeInMillis, locale = java.util.Locale.US)
+        assertEquals("by 12:05 AM", label)
+    }
 
     @Test
     fun itemCountLabel_singularAndPlural() {

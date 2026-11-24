@@ -230,7 +230,7 @@ class PdfReceiptService(
             cursorY += 16f
             canvas.drawText("Window: ${data.deliveryWindowLabel}", left, cursorY, textPaint)
             cursorY += 16f
-            canvas.drawText("Courier: ${data.riderName} (${data.riderPhone})", left, cursorY, textPaint)
+            canvas.drawText("Courier: ${data.riderName}", left, cursorY, textPaint) // rider number is not shared with customers
             cursorY += 18f
 
             canvas.drawLine(left, cursorY, right, cursorY, linePaint)

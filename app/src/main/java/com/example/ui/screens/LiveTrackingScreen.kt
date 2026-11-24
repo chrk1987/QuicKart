@@ -1,5 +1,15 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+
+import com.example.util.arrivalByLabel
+
+import com.example.util.etaMinutesLabel
+
+import androidx.compose.runtime.saveable.rememberSaveable
+
+import androidx.compose.foundation.combinedClickable
+
 import com.example.data.model.PaymentMethod
 import androidx.compose.material3.AlertDialog
 import com.example.util.itemCountLabel
@@ -116,7 +126,7 @@ import com.example.util.NotificationHelper
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun LiveTrackingScreen(
     order: OrderRecord?,
@@ -195,9 +205,11 @@ fun LiveTrackingScreen(
         return
     }
 
-    val minutes = order.remainingSeconds / 60
-    val seconds = order.remainingSeconds % 60
-    val formattedEta = String.format(Locale.US, "%02d:%02d", minutes, seconds)
+    // Customer-facing ETA: whole minutes + arrival clock time (no ticking seconds).
+    val etaLabel = etaMinutesLabel(order.remainingSeconds)
+    val arrivalLabel = remember(order.remainingSeconds / 30) { arrivalByLabel(order.remainingSeconds) }
+    // Demo-only stage simulation controls; revealed by long-pressing the status header.
+    var showDemoControls by rememberSaveable { mutableStateOf(false) }
     var showOrderSummarySheet by remember(order.orderId) { mutableStateOf(false) }
     var showCancelConfirm by remember(order.orderId) { mutableStateOf(false) }
 
@@ -283,7 +295,7 @@ fun LiveTrackingScreen(
             item {
                 val etaMinsHeadline = ((order.remainingSeconds + 59) / 60).coerceAtLeast(1)
                 val headerHeadline = when (order.stage) {
-                    OrderStage.CONFIRMED -> "Order placed at Pod"
+                    OrderStage.CONFIRMED -> "Order confirmed"
                     OrderStage.PACKING -> "Packing your order"
                     OrderStage.OUT_FOR_DELIVERY -> "Arriving in $etaMinsHeadline min"
                     OrderStage.DELIVERED -> "Order delivered!"
@@ -298,7 +310,18 @@ fun LiveTrackingScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFF141414) /* brand black card */
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(22.dp))
+                        // Hidden demo switch: long-press the header to show/hide stage simulation.
+                        .combinedClickable(
+                            onClick = {},
+                            onLongClick = {
+                                showDemoControls = !showDemoControls
+                                onShowMessage(if (showDemoControls) "Demo controls shown" else "Demo controls hidden")
+                            }
+                        )
+                        .testTag("tracking_status_header")
                 ) {
                     Row(
                         modifier = Modifier
@@ -386,20 +409,28 @@ fun LiveTrackingScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
+                                val delivered = order.stage == OrderStage.DELIVERED
                                 Text(
-                                    text = if (order.stage == OrderStage.DELIVERED) "DONE" else "ETA",
+                                    text = if (delivered) "DONE" else "ARRIVING IN",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = tokens.brandYellow,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = if (order.stage == OrderStage.DELIVERED) "00:00" else formattedEta,
-                                    fontFamily = JetBrainsMonoFontFamily,
+                                    text = if (delivered) "✓" else etaLabel,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = ((if (metrics.isNarrowPhone) 22f else 26f) * metrics.zoomScale).sp,
                                     color = Color.White,
                                     modifier = Modifier.testTag("live_eta_countdown")
                                 )
+                                if (!delivered) {
+                                    Text(
+                                        text = arrivalLabel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        modifier = Modifier.testTag("live_eta_arrival_time")
+                                    )
+                                }
                             }
                         }
                     }
@@ -503,7 +534,8 @@ fun LiveTrackingScreen(
                                 }
                             }
                             Text(
-                                text = "QuickKart Electric Fleet • ${order.riderPhone}",
+                                // Rider's number is never shown; calls go through a masked line in production.
+                                text = "QuickKart Electric Fleet • Masked call",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = tokens.muted
                             )
@@ -520,7 +552,7 @@ fun LiveTrackingScreen(
                                         Uri.parse("tel:${order.riderPhone}")
                                     )
                                     runCatching { context.startActivity(dialIntent) }
-                                        .onFailure { onShowMessage("Dialer unavailable; rider ${order.riderPhone}") }
+                                        .onFailure { onShowMessage("Calling isn't available on this device.") }
                                 }
                                 .testTag("call_rider_button")
                         ) {
@@ -542,8 +574,8 @@ fun LiveTrackingScreen(
                 AnimatedStageProgressCard(stage = order.stage)
             }
 
-            // Simulate Stage Progression Controls
-            item {
+            // Simulate Stage Progression Controls — demo mode only (long-press the status header).
+            if (showDemoControls) item {
                 Card(
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = tokens.surface),

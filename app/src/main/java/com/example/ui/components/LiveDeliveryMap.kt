@@ -108,6 +108,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
@@ -318,15 +319,16 @@ fun InteractiveDeliveryRouteMap(
         remainingMeters >= 1000 -> String.format(Locale.US, "%.1f km away", remainingMeters / 1000f)
         else -> "$remainingMeters m away"
     }
+    // Customer-facing status (no internal "Pod"/speed jargon).
     val speedLabel = when (order.stage) {
-        OrderStage.CONFIRMED -> "Queued at Pod"
-        OrderStage.PACKING -> "Packing Bag"
-        OrderStage.OUT_FOR_DELIVERY -> "24 km/h • En route"
+        OrderStage.CONFIRMED -> "Order confirmed"
+        OrderStage.PACKING -> "Packing your order"
+        OrderStage.OUT_FOR_DELIVERY -> "On the way"
         OrderStage.DELIVERED -> "Delivered"
     }
     val etaMins = ((order.remainingSeconds + 59) / 60).coerceAtLeast(1)
     val riderBadgeLabel = when (order.stage) {
-        OrderStage.CONFIRMED -> "At Pod"
+        OrderStage.CONFIRMED -> "At store"
         OrderStage.PACKING -> "Packing"
         OrderStage.OUT_FOR_DELIVERY -> "${etaMins}m away"
         OrderStage.DELIVERED -> "Delivered"
@@ -335,12 +337,10 @@ fun InteractiveDeliveryRouteMap(
     var selectedPinLabel by remember(order.stage, liveDropoffPoint) {
         mutableStateOf(
             when (order.stage) {
-                OrderStage.CONFIRMED -> "${geoRoute.hubName}: Picking items for your order"
-                OrderStage.PACKING -> "${geoRoute.hubName}: Sealed in temperature-controlled bag"
-                OrderStage.OUT_FOR_DELIVERY ->
-                    "${order.riderName} is $remainingDistanceLabel via ${geoRoute.streetAxisLabel}"
-                OrderStage.DELIVERED ->
-                    "Delivered safely to ${order.deliveryAddressLabel}"
+                OrderStage.CONFIRMED -> "The store is picking your items"
+                OrderStage.PACKING -> "Your order is packed in a cold bag"
+                OrderStage.OUT_FOR_DELIVERY -> "${order.riderName} is $remainingDistanceLabel"
+                OrderStage.DELIVERED -> "Delivered safely to ${order.deliveryAddressLabel}"
             }
         )
     }
@@ -527,61 +527,20 @@ fun InteractiveDeliveryRouteMap(
                         label = speedLabel,
                         highlighted = false
                     )
-                    TelemetryChip(
-                        icon = Icons.Rounded.GpsFixed,
-                        label = String.format(Locale.US, "%.4f, %.4f", riderGeo.latitude, riderGeo.longitude),
-                        highlighted = false,
-                        mono = true
-                    )
                 }
 
                 HorizontalDivider(color = tokens.border.copy(alpha = 0.6f))
 
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = selectedPinLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tokens.ink,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .align(Alignment.CenterVertically)
-                    )
-
-                    OutlinedButton(
-                        onClick = {
-                            val uri = Uri.parse(
-                                "geo:${riderGeo.latitude},${riderGeo.longitude}?q=${activeDropoff.latitude},${activeDropoff.longitude}(${Uri.encode(order.deliveryAddressLabel)})"
-                            )
-                            val intent = Intent(Intent.ACTION_VIEW, uri)
-                            runCatching { context.startActivity(intent) }
-                                .onFailure {
-                                    onPinInfo("No external Maps app installed. Live street map active in-app.")
-                                }
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, tokens.border),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = tokens.surface,
-                            contentColor = tokens.ink
-                        ),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier
-                            .defaultMinSize(minHeight = 40.dp)
-                            .testTag("open_external_maps_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Map,
-                            contentDescription = null,
-                            modifier = Modifier.size(metrics.iconSmall)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text("Open Maps", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
+                // Customer view: plain status line only (no external-navigation button —
+                // turn-by-turn "Open Maps" is a rider tool).
+                Text(
+                    text = selectedPinLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.ink,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("map_status_line")
+                )
             }
         }
     }
@@ -689,7 +648,7 @@ fun InteractiveDeliveryRouteMap(
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "Real OpenStreetMap street route • Pinch/drag to explore • Tap pins for details",
+                                text = "Pinch to zoom • Tap a pin for details",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = tokens.muted
                             )
@@ -736,7 +695,8 @@ private fun BlinkitOsmStreetMapSurface(
 
     // Softened pastel light-mode tile filter for crisp Blinkit-style contrast under route & pins
     val lightPastelTileFilter = remember {
-        val cm = ColorMatrix().apply { setSaturation(0.72f) }
+        // Calmer map: stronger desaturation mutes busy POI markers (hospitals etc.) under the route & pins.
+        val cm = ColorMatrix().apply { setSaturation(0.45f) }
         val bright = ColorMatrix(
             floatArrayOf(
                 1.03f, 0f, 0f, 0f, 6f,
@@ -752,7 +712,7 @@ private fun BlinkitOsmStreetMapSurface(
     val hubDrawable = remember(context, geoRoute.hubName) {
         createLabeledPodPinDrawable(
             context = context,
-            label = "Pod"
+            label = "Store"
         )
     }
     val destDrawable = remember(context, order.deliveryAddressLabel) {
@@ -854,9 +814,16 @@ private fun BlinkitOsmStreetMapSurface(
         AndroidView(
             factory = { mapView },
             update = { mv ->
-                mv.overlayManager.tilesOverlay.setColorFilter(
-                    if (tokens.isDark) TilesOverlay.INVERT_COLORS else lightPastelTileFilter
-                )
+                if (USE_CALM_BASEMAP) {
+                    // Calm CARTO style: light "Voyager" or dark "Dark Matter" tiles, no colour filter needed.
+                    val wanted = if (tokens.isDark) CartoDarkTiles else CartoVoyagerTiles
+                    if (mv.tileProvider.tileSource.name() != wanted.name()) mv.setTileSource(wanted)
+                    mv.overlayManager.tilesOverlay.setColorFilter(null)
+                } else {
+                    mv.overlayManager.tilesOverlay.setColorFilter(
+                        if (tokens.isDark) TilesOverlay.INVERT_COLORS else lightPastelTileFilter
+                    )
+                }
 
                 val routeCasingLine = overlayHolders[0] as Polyline
                 val pendingLine = overlayHolders[1] as Polyline
@@ -881,8 +848,8 @@ private fun BlinkitOsmStreetMapSurface(
 
                 hubMarker.position = hubPoint
                 hubMarker.icon = hubDrawable
-                hubMarker.title = geoRoute.hubName
-                hubMarker.snippet = "Dark Store Hub: ${geoRoute.hubName} (${order.neighborhoodName})"
+                hubMarker.title = "QuickKart store"
+                hubMarker.snippet = "QuickKart store • ${order.neighborhoodName}"
                 hubMarker.setOnMarkerClickListener { m, _ ->
                     onTapPin(m.snippet ?: m.title)
                     true
@@ -891,7 +858,7 @@ private fun BlinkitOsmStreetMapSurface(
                 destMarker.position = dropoffPoint
                 destMarker.icon = destDrawable
                 destMarker.title = order.deliveryAddressLabel
-                destMarker.snippet = "Drop-off (${order.deliveryAddressLabel}): ${order.deliveryAddressFull}"
+                destMarker.snippet = "Delivering to ${order.deliveryAddressLabel}: ${order.deliveryAddressFull}"
                 destMarker.setOnMarkerClickListener { m, _ ->
                     onTapPin(m.snippet ?: m.title)
                     true
@@ -900,7 +867,7 @@ private fun BlinkitOsmStreetMapSurface(
                 riderMarker.position = riderPoint
                 riderMarker.icon = riderDrawable
                 riderMarker.title = order.riderName
-                riderMarker.snippet = "${order.riderName} • ${order.stage.title} • ${geoRoute.streetAxisLabel}"
+                riderMarker.snippet = "${order.riderName} • ${order.stage.title}"
                 riderMarker.setOnMarkerClickListener { m, _ ->
                     onTapPin(m.snippet ?: m.title)
                     true
@@ -912,7 +879,7 @@ private fun BlinkitOsmStreetMapSurface(
                     mv.post {
                         runCatching {
                             val box = BoundingBox.fromGeoPoints(fullWaypoints)
-                            mv.zoomToBoundingBox(box, false, 88)
+                            mv.zoomToBoundingBox(box, false, routeFitPaddingPx(mv))
                         }.onFailure {
                             mv.controller.setZoom(15.8)
                             mv.controller.setCenter(riderPoint)
@@ -940,61 +907,21 @@ private fun BlinkitOsmStreetMapSurface(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 LivePulseBadge(
-                    label = if (isLiveGpsTracking) "GPS LIVE" else "LIVE",
+                    label = "LIVE",
                     color = tokens.deliveryGreenDeep
-                )
-                Text(
-                    text = geoRoute.streetAxisLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = tokens.ink,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
                 )
             }
         }
 
-        // Top-right floating GPS + Fullscreen controls
-        Row(
+        // Top-right controls (customer view): full-screen + re-centre only. Pinch to zoom;
+        // live-GPS and zoom buttons are not needed by customers.
+        Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = if (isLiveGpsTracking) tokens.brandYellow else tokens.surface.copy(alpha = 0.96f),
-                border = BorderStroke(
-                    1.dp,
-                    if (isLiveGpsTracking) tokens.brandYellow else tokens.border
-                ),
-                modifier = Modifier
-                    .defaultMinSize(minHeight = 40.dp)
-                    .shadow(4.dp, RoundedCornerShape(50))
-                    .clip(RoundedCornerShape(50))
-                    .clickable { onToggleGps() }
-                    .testTag("locate_me_button")
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.MyLocation,
-                        contentDescription = "Toggle live GPS pin",
-                        tint = if (isLiveGpsTracking) tokens.onBrandYellow else tokens.ink,
-                        modifier = Modifier.size(metrics.iconSmall)
-                    )
-                    Text(
-                        text = if (isLiveGpsTracking) "GPS On" else "GPS",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isLiveGpsTracking) Color.White else tokens.ink,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
             if (onExpandFullscreen != null) {
                 Surface(
                     shape = CircleShape,
@@ -1017,6 +944,31 @@ private fun BlinkitOsmStreetMapSurface(
                     }
                 }
             }
+            Surface(
+                shape = CircleShape,
+                color = tokens.surface.copy(alpha = 0.96f),
+                border = BorderStroke(1.dp, tokens.border),
+                modifier = Modifier
+                    .size(40.dp)
+                    .shadow(4.dp, CircleShape)
+                    .clip(CircleShape)
+                    .clickable {
+                        runCatching {
+                            val box = BoundingBox.fromGeoPoints(fullWaypoints)
+                            mapView.zoomToBoundingBox(box, true, routeFitPaddingPx(mapView))
+                        }
+                    }
+                    .testTag("recenter_map_button")
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.GpsFixed,
+                        contentDescription = "Re-centre map on your delivery",
+                        tint = tokens.ink,
+                        modifier = Modifier.size(metrics.iconMedium)
+                    )
+                }
+            }
         }
 
         // Bottom-left OpenStreetMap attribution pill
@@ -1028,56 +980,55 @@ private fun BlinkitOsmStreetMapSurface(
                 .padding(10.dp)
         ) {
             Text(
-                text = "© OpenStreetMap",
+                // Attribution required by the tile provider's terms.
+                text = if (USE_CALM_BASEMAP) "© OpenStreetMap © CARTO" else "© OpenStreetMap",
                 style = MaterialTheme.typography.labelSmall,
                 color = tokens.muted,
                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
             )
         }
-
-        // Bottom-right grouped Blinkit-style floating map controls
-        Surface(
-            color = tokens.surface.copy(alpha = 0.96f),
-            shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(1.dp, tokens.border),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(10.dp)
-                .shadow(4.dp, RoundedCornerShape(14.dp))
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                MapControlButton(
-                    icon = Icons.Rounded.Add,
-                    contentDescription = "Zoom in street map",
-                    onClick = { mapView.controller.zoomIn() }
-                )
-                HorizontalDivider(
-                    modifier = Modifier.width(28.dp),
-                    color = tokens.border.copy(alpha = 0.7f)
-                )
-                MapControlButton(
-                    icon = Icons.Rounded.Remove,
-                    contentDescription = "Zoom out street map",
-                    onClick = { mapView.controller.zoomOut() }
-                )
-                HorizontalDivider(
-                    modifier = Modifier.width(28.dp),
-                    color = tokens.border.copy(alpha = 0.7f)
-                )
-                MapControlButton(
-                    icon = Icons.Rounded.GpsFixed,
-                    contentDescription = "Fit route on street map",
-                    onClick = {
-                        runCatching {
-                            val box = BoundingBox.fromGeoPoints(fullWaypoints)
-                            mapView.zoomToBoundingBox(box, true, 88)
-                        }
-                    }
-                )
-            }
-        }
     }
 }
+
+/**
+ * Padding used when fitting the route so the pins never sit under the floating
+ * LIVE badge (top-left) or the full-screen / re-centre buttons (top-right).
+ */
+private fun routeFitPaddingPx(mapView: MapView): Int =
+    (72 * mapView.resources.displayMetrics.density).roundToInt()
+
+/**
+ * Map style (item 7). CARTO "Voyager" / "Dark Matter" basemaps are calmer than the default
+ * OpenStreetMap style (no hospital/pharmacy markers, softer colours).
+ * Licence: CARTO basemaps are free for non-commercial use up to their published view limits
+ * with "© OpenStreetMap © CARTO" attribution; commercial launch needs a CARTO plan or a
+ * self-hosted/other tile provider. Set to false to fall back to the default OSM style.
+ */
+// Disabled: CARTO now serves an "API KEY REQUIRED" watermark without an account key.
+// Re-enable only after adding a CARTO plan/key (or point the sources at your own tile server).
+private const val USE_CALM_BASEMAP = false
+
+private val CartoVoyagerTiles = XYTileSource(
+    "CartoVoyager", 0, 20, 256, ".png",
+    arrayOf(
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager/",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager/"
+    ),
+    "© OpenStreetMap contributors © CARTO"
+)
+
+private val CartoDarkTiles = XYTileSource(
+    "CartoDarkMatter", 0, 20, 256, ".png",
+    arrayOf(
+        "https://a.basemaps.cartocdn.com/dark_all/",
+        "https://b.basemaps.cartocdn.com/dark_all/",
+        "https://c.basemaps.cartocdn.com/dark_all/",
+        "https://d.basemaps.cartocdn.com/dark_all/"
+    ),
+    "© OpenStreetMap contributors © CARTO"
+)
 
 private fun createLabeledPodPinDrawable(
     context: Context,

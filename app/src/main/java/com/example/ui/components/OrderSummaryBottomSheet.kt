@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import com.example.util.etaMinutesLabel
+
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -87,9 +89,6 @@ fun OrderSummaryBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scrollState = rememberScrollState()
 
-    val minutes = order.remainingSeconds / 60
-    val seconds = order.remainingSeconds % 60
-    val formattedCountdown = String.format(Locale.US, "%02d:%02d", minutes, seconds)
     val etaMinsHeadline = ((order.remainingSeconds + 59) / 60).coerceAtLeast(1)
 
     val arrivalClockLabel = remember(order.remainingSeconds / 30, order.stage) {
@@ -253,14 +252,13 @@ fun OrderSummaryBottomSheet(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    text = if (order.stage == OrderStage.DELIVERED) "DONE" else "ETA",
+                                    text = if (order.stage == OrderStage.DELIVERED) "DONE" else "ARRIVING IN",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = tokens.brandYellow,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = if (order.stage == OrderStage.DELIVERED) "00:00" else formattedCountdown,
-                                    fontFamily = JetBrainsMonoFontFamily,
+                                    text = if (order.stage == OrderStage.DELIVERED) "✓" else etaMinutesLabel(order.remainingSeconds),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = ((if (metrics.isNarrowPhone) 18f else 20f) * metrics.zoomScale).sp,
                                     color = Color.White,
@@ -607,12 +605,10 @@ fun LiveOrderSummarySheetTriggerBar(
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
-    val minutes = order.remainingSeconds / 60
-    val seconds = order.remainingSeconds % 60
     val etaLabel = if (order.stage == OrderStage.DELIVERED) {
         "Delivered"
     } else {
-        String.format(Locale.US, "ETA %02d:%02d", minutes, seconds)
+        "Arriving in ${etaMinutesLabel(order.remainingSeconds)}"
     }
 
     Surface(

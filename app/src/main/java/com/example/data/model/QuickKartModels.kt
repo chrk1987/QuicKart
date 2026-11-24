@@ -174,8 +174,8 @@ enum class OrderStage(
     CONFIRMED(
         stepIndex = 0,
         title = "Confirmed",
-        subtitle = "Dark store received your order",
-        notificationBody = "Order confirmed! Our dark-store picker is picking up your basket."
+        subtitle = "The store has received your order",
+        notificationBody = "Order confirmed! The store is picking your items."
     ),
     PACKING(
         stepIndex = 1,
