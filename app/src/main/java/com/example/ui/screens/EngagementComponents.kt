@@ -263,7 +263,7 @@ fun SearchSuggestionsPanel(
                     Text("Recent searches", style = MaterialTheme.typography.labelLarge, color = tokens.ink, modifier = Modifier.weight(1f))
                     TextButton(
                         onClick = onClearRecent,
-                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink),
                         modifier = Modifier.testTag("clear_recent_searches")
                     ) { Text("Clear", fontWeight = FontWeight.Bold) }
                 }
@@ -360,7 +360,7 @@ fun ProductReviewsSection(product: Product) {
                         Text("${5 - index}", style = MaterialTheme.typography.labelSmall, color = tokens.muted)
                         LinearProgressIndicator(
                             progress = { fraction },
-                            color = tokens.deliveryGreenDeep,
+                            color = tokens.brandYellow,
                             trackColor = tokens.surfaceElevated,
                             modifier = Modifier
                                 .weight(1f)

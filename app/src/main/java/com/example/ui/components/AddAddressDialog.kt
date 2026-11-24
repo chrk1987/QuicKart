@@ -299,7 +299,7 @@ fun AddAddressDialog(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Surface(
-                            color = tokens.deliveryGreenSoft,
+                            color = tokens.brandYellowSoft,
                             shape = CircleShape,
                             modifier = Modifier.size(40.dp)
                         ) {
@@ -307,7 +307,7 @@ fun AddAddressDialog(
                                 Icon(
                                     imageVector = Icons.Rounded.LocationOn,
                                     contentDescription = null,
-                                    tint = tokens.deliveryGreenDeep,
+                                    tint = tokens.ink,
                                     modifier = Modifier.size(metrics.iconMedium)
                                 )
                             }
@@ -323,7 +323,7 @@ fun AddAddressDialog(
                                     "Nearest Hub: ${it.name} (${it.etaMinutes}m express)"
                                 } ?: "Move map pin to auto-fill address fields",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = tokens.deliveryGreenDeep,
+                                color = tokens.muted,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -395,7 +395,7 @@ fun AddAddressDialog(
                                         Icon(
                                             imageVector = Icons.Rounded.GpsFixed,
                                             contentDescription = null,
-                                            tint = tokens.deliveryGreenDeep,
+                                            tint = tokens.ink,
                                             modifier = Modifier.size(metrics.iconSmall)
                                         )
                                         Text(
@@ -410,7 +410,7 @@ fun AddAddressDialog(
                                         )
                                         TextButton(
                                             onClick = { showCoordinateEditor = !showCoordinateEditor },
-                                            colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                                            colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink),
                                             modifier = Modifier.testTag("toggle_manual_coords_button")
                                         ) {
                                             Icon(
@@ -470,8 +470,8 @@ fun AddAddressDialog(
                                                 },
                                                 shape = RoundedCornerShape(10.dp),
                                                 colors = ButtonDefaults.buttonColors(
-                                                    containerColor = tokens.deliveryGreenDeep,
-                                                    contentColor = Color.White
+                                                    containerColor = tokens.brandYellow,
+                                                    contentColor = tokens.onBrandYellow
                                                 ),
                                                 modifier = Modifier
                                                     .defaultMinSize(minHeight = 48.dp)
@@ -505,10 +505,10 @@ fun AddAddressDialog(
                                     val active = neighborhoodId == hub.id
                                     Surface(
                                         shape = RoundedCornerShape(50),
-                                        color = if (active) tokens.deliveryGreenSoft else tokens.surfaceElevated,
+                                        color = if (active) tokens.brandYellow else tokens.surfaceElevated,
                                         border = BorderStroke(
                                             1.dp,
-                                            if (active) tokens.deliveryGreen else tokens.border
+                                            if (active) tokens.brandYellow else tokens.border
                                         ),
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(50))
@@ -526,7 +526,7 @@ fun AddAddressDialog(
                                         Text(
                                             text = "${hub.name} • ${hub.city}",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = if (active) tokens.deliveryGreenDeep else tokens.ink,
+                                            color = if (active) tokens.onBrandYellow else tokens.ink,
                                             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
                                         )
@@ -574,7 +574,7 @@ fun AddAddressDialog(
                                         landmarkManuallyEdited = false
                                         applyResolvedAddress(resolvedPin, forceAllFields = true)
                                     },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink),
                                     modifier = Modifier.testTag("resync_from_pin_button")
                                 ) {
                                     Icon(
@@ -1008,7 +1008,7 @@ private fun AddressPinPickerMapSurface(
         Surface(
             color = tokens.surface.copy(alpha = 0.96f),
             shape = RoundedCornerShape(50),
-            border = BorderStroke(1.dp, tokens.deliveryGreen),
+            border = BorderStroke(1.dp, tokens.border),
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(10.dp)
@@ -1025,13 +1025,13 @@ private fun AddressPinPickerMapSurface(
                 Icon(
                     imageVector = Icons.Rounded.MyLocation,
                     contentDescription = "Use current GPS location",
-                    tint = tokens.deliveryGreenDeep,
+                    tint = tokens.ink,
                     modifier = Modifier.size(metrics.iconSmall)
                 )
                 Text(
                     text = "Use GPS",
                     style = MaterialTheme.typography.labelSmall,
-                    color = tokens.deliveryGreenDeep,
+                    color = tokens.ink,
                     fontWeight = FontWeight.Bold
                 )
             }

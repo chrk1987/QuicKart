@@ -257,7 +257,7 @@ fun LoginScreen(
                     Icon(
                         imageVector = Icons.Rounded.LocationOn,
                         contentDescription = null,
-                        tint = tokens.deliveryGreen,
+                        tint = tokens.ink,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
@@ -299,13 +299,13 @@ fun LoginScreen(
                                         color = if (isSelected) tokens.onBrandYellow else tokens.ink
                                     )
                                     Surface(
-                                        color = if (isSelected) Color(0xFF141414) else tokens.deliveryGreenSoft,
+                                        color = if (isSelected) Color(0xFF141414) else tokens.brandYellowSoft,
                                         shape = RoundedCornerShape(50)
                                     ) {
                                         Text(
                                             text = "${item.etaMinutes}m",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = if (isSelected) tokens.brandYellow else tokens.deliveryGreenDeep,
+                                            color = if (isSelected) tokens.brandYellow else tokens.ink,
                                             modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                                         )
                                     }
@@ -390,7 +390,7 @@ fun LoginScreen(
                                 Text(
                                     text = "Demo OTP sent to +91 $phoneNumber",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = tokens.deliveryGreen
+                                    color = tokens.muted
                                 )
                                 TextButton(
                                     onClick = {

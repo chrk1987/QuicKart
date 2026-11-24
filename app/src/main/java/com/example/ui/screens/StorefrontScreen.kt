@@ -1381,14 +1381,14 @@ private fun HeaderIconWithBadge(
                     // Centre of the badge on the icon's top-right corner.
                     .offset(x = iconSize / 2, y = -(iconSize / 2))
                     .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
-                    .background(tokens.alertRed, RoundedCornerShape(50))
+                    .background(tokens.ink, RoundedCornerShape(50)) // same black count badge as the Cart tab
                     .border(1.5.dp, tokens.surface, RoundedCornerShape(50))
                     .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = if (count > 9) "9+" else count.toString(),
-                    color = Color.White,
+                    color = tokens.background,
                     fontSize = 10.sp,
                     lineHeight = 10.sp,
                     fontWeight = FontWeight.Bold

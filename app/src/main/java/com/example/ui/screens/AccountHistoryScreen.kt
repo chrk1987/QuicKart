@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.zoomScaledControl
+
 import androidx.compose.material.icons.rounded.Description
 
 import com.example.data.model.SupportTicketStatus
@@ -309,11 +311,8 @@ fun AccountHistoryScreen(
                                 }
                             }
                         }
-
-                        QuickKartLogo(
-                            size = metrics.badgeButtonSize,
-                            cornerRadius = 10.dp
-                        )
+                        // No app logo here: this card is the user's profile, and the extra
+                        // yellow mark competed with the avatar and the edit chip.
                     }
                 }
             }
@@ -824,7 +823,7 @@ fun AccountHistoryScreen(
                                 uncheckedTrackColor = tokens.surfaceElevated,
                                 uncheckedBorderColor = tokens.muted
                             ),
-                            modifier = Modifier.testTag("settings_notifications_switch")
+                            modifier = Modifier.zoomScaledControl().testTag("settings_notifications_switch")
                         )
                     }
 

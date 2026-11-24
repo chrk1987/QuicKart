@@ -216,8 +216,8 @@ fun SavedFavoritesBottomSheet(
                             onClick = onQuickAddAll,
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = tokens.deliveryGreenDeep,
-                                contentColor = Color.White
+                                containerColor = tokens.brandYellow,
+                                contentColor = tokens.onBrandYellow
                             ),
                             modifier = Modifier
                                 .defaultMinSize(minHeight = 44.dp)
@@ -341,7 +341,7 @@ fun SavedFavoritesBottomSheet(
                                     }
                                 } else {
                                     Surface(
-                                        color = tokens.deliveryGreenDeep,
+                                        color = tokens.brandYellow,
                                         shape = RoundedCornerShape(10.dp)
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -354,14 +354,14 @@ fun SavedFavoritesBottomSheet(
                                                 Icon(
                                                     imageVector = Icons.Rounded.Remove,
                                                     contentDescription = "Decrease ${product.name}",
-                                                    tint = Color.White,
+                                                    tint = tokens.onBrandYellow,
                                                     modifier = Modifier.size(metrics.iconSmall)
                                                 )
                                             }
                                             Text(
                                                 text = qtyInCart.toString(),
                                                 style = MaterialTheme.typography.labelLarge,
-                                                color = Color.White,
+                                                color = tokens.onBrandYellow,
                                                 modifier = Modifier.padding(horizontal = 4.dp)
                                             )
                                             IconButton(
@@ -373,7 +373,7 @@ fun SavedFavoritesBottomSheet(
                                                 Icon(
                                                     imageVector = Icons.Rounded.Add,
                                                     contentDescription = "Increase ${product.name}",
-                                                    tint = Color.White,
+                                                    tint = tokens.onBrandYellow,
                                                     modifier = Modifier.size(metrics.iconSmall)
                                                 )
                                             }
@@ -394,8 +394,8 @@ fun SavedFavoritesBottomSheet(
                         },
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = tokens.deliveryGreenDeep,
-                            contentColor = Color.White
+                            containerColor = tokens.brandYellow,
+                            contentColor = tokens.onBrandYellow
                         ),
                         modifier = Modifier
                             .fillMaxWidth()

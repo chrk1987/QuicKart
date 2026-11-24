@@ -579,9 +579,9 @@ private fun ConsentRow(icon: ImageVector, title: String, value: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Surface(color = tokens.deliveryGreenSoft, shape = CircleShape, modifier = Modifier.size(36.dp)) {
+        Surface(color = tokens.brandYellowSoft, shape = CircleShape, modifier = Modifier.size(36.dp)) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = tokens.deliveryGreenDeep, modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = null, tint = tokens.ink, modifier = Modifier.size(20.dp))
             }
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -719,7 +719,7 @@ private fun LinkPhoneStep(
             Text(
                 text = "Demo OTP sent to +91 $phone",
                 style = MaterialTheme.typography.bodySmall,
-                color = tokens.deliveryGreen
+                color = tokens.muted
             )
             TextButton(onClick = {
                 otpSent = false

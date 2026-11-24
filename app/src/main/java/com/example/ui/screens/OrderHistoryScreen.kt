@@ -459,7 +459,7 @@ private fun HistoricalOrderCard(
                         Icon(
                             imageVector = Icons.Rounded.SupportAgent,
                             contentDescription = "Get help for order ${order.orderId}",
-                            tint = tokens.deliveryGreenDeep,
+                            tint = tokens.ink,
                             modifier = Modifier.size(metrics.iconSmall)
                         )
                         Text(

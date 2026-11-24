@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.zoomScaledControl
+
 import com.example.util.itemCountLabel
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -861,7 +863,7 @@ fun CartCheckoutScreen(
                                         RadioButton(
                                             selected = selected,
                                             onClick = { onSelectPaymentMethod(method) },
-                                            colors = RadioButtonDefaults.colors(selectedColor = tokens.ink)
+                                            colors = RadioButtonDefaults.colors(selectedColor = tokens.ink), modifier = Modifier.zoomScaledControl()
                                         )
                                     }
                                 }
@@ -1233,7 +1235,7 @@ private fun DeliveryWindowPickerCard(
                             RadioButton(
                                 selected = isSelected,
                                 onClick = { onSelectSlot(slot) },
-                                colors = RadioButtonDefaults.colors(selectedColor = tokens.ink)
+                                colors = RadioButtonDefaults.colors(selectedColor = tokens.ink), modifier = Modifier.zoomScaledControl()
                             )
                         }
                     }

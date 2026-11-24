@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.zoomScaledControl
+
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Checkbox
@@ -322,7 +324,7 @@ private fun PaymentFlowDialog(
                                     Checkbox(
                                         checked = saveForLater,
                                         onCheckedChange = { saveForLater = it },
-                                        colors = CheckboxDefaults.colors(checkedColor = tokens.brandYellow, checkmarkColor = tokens.onBrandYellow)
+                                        colors = CheckboxDefaults.colors(checkedColor = tokens.brandYellow, checkmarkColor = tokens.onBrandYellow), modifier = Modifier.zoomScaledControl()
                                     )
                                     Text(
                                         if (method == TopUpMethod.CARD) "Save card (last 4 digits only) for faster checkout"
@@ -718,7 +720,7 @@ private fun MethodOption(
                 RadioButton(
                     selected = selected,
                     onClick = onSelect,
-                    colors = RadioButtonDefaults.colors(selectedColor = tokens.ink)
+                    colors = RadioButtonDefaults.colors(selectedColor = tokens.ink), modifier = Modifier.zoomScaledControl()
                 )
             }
             if (selected) {

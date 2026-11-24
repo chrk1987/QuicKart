@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.zoomScaledControl
+
 import com.example.util.itemCountLabel
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -982,7 +984,7 @@ private fun SupportIssueWizardContent(
                                         colors = CheckboxDefaults.colors(
                                             checkedColor = tokens.brandYellow,
                                             checkmarkColor = tokens.onBrandYellow
-                                        )
+                                        ), modifier = Modifier.zoomScaledControl()
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -1192,7 +1194,7 @@ private fun SupportIssueWizardContent(
                                         onClick = { selectedResolution = option },
                                         colors = RadioButtonDefaults.colors(
                                             selectedColor = tokens.ink
-                                        )
+                                        ), modifier = Modifier.zoomScaledControl()
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
