@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.util.itemCountLabel
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -838,7 +839,7 @@ fun StorefrontScreen(
                                 color = tokens.ink
                             )
                             Text(
-                                text = "${uiState.filteredProducts.size} items",
+                                text = itemCountLabel(uiState.filteredProducts.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = tokens.muted
                             )

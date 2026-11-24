@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.util.itemCountLabel
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -638,7 +639,7 @@ fun LiveTrackingScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Order Summary (${order.totalItemCount} items • ₹${order.totalPaid})",
+                                text = "Order Summary (${itemCountLabel(order.totalItemCount)} • ₹${order.totalPaid})",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = tokens.ink,
                                 modifier = Modifier.weight(1f)

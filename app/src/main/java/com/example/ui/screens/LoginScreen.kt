@@ -88,6 +88,9 @@ fun LoginScreen(
     var otpCode by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var showProfileSetup by remember { mutableStateOf(false) }
+    var showGoogleFlow by remember { mutableStateOf(false) }
+    var googleProfile by remember { mutableStateOf<GoogleAccountProfile?>(null) }
+    var googleVerifiedPhone by remember { mutableStateOf("") }
 
     val activeNeighborhood = neighborhoods.find { it.id == selectedNeighborhoodId }
         ?: neighborhoods.first()
@@ -445,6 +448,10 @@ fun LoginScreen(
                 }
             }
 
+            // Sign in with Google (design prototype)
+            SignInOptionDivider()
+            ContinueWithGoogleButton(onClick = { showGoogleFlow = true })
+
             // One-tap Guest Sign In
             OutlinedButton(
                 onClick = { onContinueAsGuest(activeNeighborhood.id) },
@@ -476,6 +483,35 @@ fun LoginScreen(
             onCompleteProfile = { firstName, lastName, email ->
                 showProfileSetup = false
                 onSignInWithPhone("+91 $phoneNumber", activeNeighborhood.id, firstName, lastName, email)
+            }
+        )
+    }
+
+    if (showGoogleFlow) {
+        GoogleSignInFlow(
+            onDismiss = { showGoogleFlow = false },
+            onSignedIn = { profile, verifiedPhone ->
+                showGoogleFlow = false
+                googleVerifiedPhone = verifiedPhone
+                googleProfile = profile
+            }
+        )
+    }
+
+    // Final confirmation reuses the same Account Details step as phone sign-in,
+    // prefilled from the Google profile.
+    googleProfile?.let { profile ->
+        AccountSetupDialog(
+            initialPhone = googleVerifiedPhone,
+            initialFirstName = profile.firstName,
+            initialLastName = profile.lastName,
+            initialEmail = profile.email,
+            title = "Confirm your details",
+            subtitle = "We've filled these in from your Google account. Edit anything before you continue.",
+            onDismiss = { googleProfile = null },
+            onCompleteProfile = { firstName, lastName, email ->
+                googleProfile = null
+                onSignInWithPhone(googleVerifiedPhone, activeNeighborhood.id, firstName, lastName, email)
             }
         )
     }

@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.util.itemCountLabel
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -843,7 +844,7 @@ private fun SupportIssueWizardContent(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "${order.totalItemCount} items • ₹${order.totalPaid}",
+                                    text = "${itemCountLabel(order.totalItemCount)} • ₹${order.totalPaid}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = tokens.muted
                                 )

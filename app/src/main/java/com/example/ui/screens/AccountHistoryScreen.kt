@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.util.itemCountLabel
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,8 +29,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -42,8 +46,8 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.Button
@@ -73,9 +77,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.model.OrderStage
 import com.example.data.model.SavedAddress
@@ -88,6 +95,9 @@ import com.example.ui.theme.MIN_SCREEN_ZOOM_PERCENT
 import com.example.ui.theme.QuickKartMetricsTokens
 import com.example.ui.theme.QuickKartThemeTokens
 import com.example.util.NotificationHelper
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -112,18 +122,25 @@ fun AccountHistoryScreen(
         latitude: Double?,
         longitude: Double?
     ) -> Unit,
-    onAddWalletMoney: (Int) -> Unit = {},
+    /** Called only after a top-up payment succeeds, with the method used. */
+    onAddWalletMoney: (amountInr: Int, methodNote: String) -> Unit = { _, _ -> },
     onUpdateProfile: (firstName: String, lastName: String, email: String) -> Unit = { _, _, _ -> },
     onOpenOrderHistory: () -> Unit = {},
     onOpenSupportHub: () -> Unit,
     onSignOut: () -> Unit,
-    onShowMessage: (String) -> Unit
+    onShowMessage: (String) -> Unit,
+    /** null = Account list of parent settings; otherwise the section opened in its own screen. */
+    openSection: String? = null,
+    onOpenSection: (String) -> Unit = {},
+    onNavigateBack: () -> Unit = {}
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
     val context = LocalContext.current
     var showAddAddressDialog by remember { mutableStateOf(false) }
     var showWalletSheet by remember { mutableStateOf(false) }
+    var showTopUpFlow by remember { mutableStateOf(false) }
+    var topUpPresetAmount by remember { mutableStateOf<Int?>(null) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
 
     val notifPermissionLauncher = rememberLauncherForActivityResult(
@@ -154,8 +171,16 @@ fun AccountHistoryScreen(
             contentPadding = PaddingValues(metrics.screenHorizontalPadding),
             verticalArrangement = Arrangement.spacedBy(metrics.itemSpacing)
         ) {
+            // Section screen header with back navigation
+            if (openSection != null) item {
+                AccountSubScreenTopBar(
+                    title = accountSectionTitle(openSection),
+                    onBack = onNavigateBack
+                )
+            }
+
             // Profile Header Card
-            item {
+            if (openSection == null) item {
                 Card(
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF141414)),
@@ -203,9 +228,9 @@ fun AccountHistoryScreen(
                                 color = Color.White.copy(alpha = 0.78f)
                             )
                             Spacer(Modifier.height(8.dp))
-                            FlowRow(
+                            Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
                                     color = Color.White.copy(alpha = 0.12f),
@@ -237,24 +262,14 @@ fun AccountHistoryScreen(
                                         .clickable { showEditProfileDialog = true }
                                         .testTag("account_edit_profile_chip")
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Edit,
-                                            contentDescription = "Edit details",
-                                            tint = tokens.onBrandYellow,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Text(
-                                            text = "Edit Profile",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = tokens.onBrandYellow,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = Icons.Rounded.Edit,
+                                        contentDescription = "Edit Profile",
+                                        tint = tokens.onBrandYellow,
+                                        modifier = Modifier
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            .size(13.dp)
+                                    )
                                 }
                             }
                         }
@@ -267,526 +282,474 @@ fun AccountHistoryScreen(
                 }
             }
 
-            // QuickKart Wallet Card
-            item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = tokens.surface),
-                    border = BorderStroke(1.5.dp, tokens.deliveryGreen.copy(alpha = 0.6f)),
+            // Account section: parent settings, each opening its own screen
+            if (openSection == null) item {
+                Text(
+                    text = "Account",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tokens.ink,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("account_wallet_card")
+                        .padding(top = 4.dp, start = 4.dp)
+                        .testTag("account_section_header")
+                )
+            }
+
+            // Profile
+            if (openSection == null || openSection == SECTION_PROFILE) item {
+                AccountParentItem(
+                    key = SECTION_PROFILE,
+                    icon = Icons.Rounded.Person,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
+                    title = "Profile",
+                    summary = if (uiState.preferences.isGuest) "Guest account" else "Name, phone & email",
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_PROFILE) }
                 ) {
-                    Column(
+                    AccountDetailRow("Name", uiState.preferences.userName.ifBlank { "Not set" })
+                    AccountDetailRow("Phone", uiState.preferences.userPhone.ifBlank { "Not set" })
+                    AccountDetailRow("Email", uiState.preferences.userEmail.ifBlank { "Not set" })
+                    AccountDetailRow(
+                        "Location",
+                        uiState.selectedNeighborhood?.displayTitle ?: "Not selected"
+                    )
+                    AccountDetailRow(
+                        "Account type",
+                        if (uiState.preferences.isGuest) "Guest" else "Registered"
+                    )
+                    OutlinedButton(
+                        onClick = { showEditProfileDialog = true },
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, tokens.border),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(metrics.cardPadding),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                            .defaultMinSize(minHeight = 48.dp)
+                            .testTag("account_profile_edit_button")
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Surface(
-                                    color = tokens.deliveryGreenSoft,
-                                    shape = CircleShape,
-                                    modifier = Modifier.size(46.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.AccountBalanceWallet,
-                                            contentDescription = "Wallet",
-                                            tint = tokens.deliveryGreenDeep,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
-                                }
-                                Column {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "QuickKart Wallet",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = tokens.ink,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Surface(
-                                            color = tokens.brandYellowSoft,
-                                            shape = RoundedCornerShape(50)
-                                        ) {
-                                            Text(
-                                                text = "1-Tap Pay",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = tokens.ink,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                    Text(
-                                        text = "Instant checkout & zero refund delays",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = tokens.muted
-                                    )
-                                }
-                            }
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = null,
+                            tint = tokens.ink,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("Edit Profile", style = MaterialTheme.typography.labelMedium, color = tokens.ink)
+                    }
+                }
+            }
 
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = "Balance",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = tokens.muted
-                                )
-                                Text(
-                                    text = "₹${uiState.walletBalance}",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = tokens.deliveryGreenDeep,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                            }
-                        }
+            // Wallet
+            if (openSection == null || openSection == SECTION_WALLET) item {
+                AccountParentItem(
+                    key = SECTION_WALLET,
+                    icon = Icons.Rounded.AccountBalanceWallet,
+                    iconBackground = tokens.deliveryGreenSoft,
+                    iconTint = tokens.deliveryGreenDeep,
+                    title = "Wallet",
+                    summary = "Balance ₹${uiState.walletBalance}",
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_WALLET) }
+                ) {
+                    AccountDetailRow(
+                        label = "Current balance",
+                        value = "₹${uiState.walletBalance}",
+                        valueColor = tokens.deliveryGreenDeep,
+                        emphasize = true
+                    )
+                    AccountDetailRow("Transactions", "${uiState.walletTransactions.size}")
 
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            listOf(100, 200, 500, 1000).forEach { amt ->
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = tokens.surfaceElevated,
-                                    border = BorderStroke(1.dp, tokens.border),
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(50))
-                                        .clickable {
-                                            onAddWalletMoney(amt)
-                                            onShowMessage("Added ₹$amt to QuickKart Wallet!")
-                                        }
-                                        .testTag("quick_add_wallet_$amt")
-                                ) {
-                                    Text(
-                                        text = "+₹$amt",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = tokens.ink,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Button(
-                                onClick = { showWalletSheet = true },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = tokens.deliveryGreenDeep,
-                                    contentColor = Color.White
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .testTag("account_wallet_add_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text("Add Money", style = MaterialTheme.typography.labelMedium)
-                            }
-
-                            OutlinedButton(
-                                onClick = { showWalletSheet = true },
-                                shape = RoundedCornerShape(12.dp),
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(100, 200, 500, 1000).forEach { amt ->
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = tokens.surfaceElevated,
                                 border = BorderStroke(1.dp, tokens.border),
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .testTag("account_wallet_passbook_button")
+                                    .clip(RoundedCornerShape(50))
+                                    .clickable {
+                                        // Opens payment for this amount; nothing is credited yet.
+                                        topUpPresetAmount = amt
+                                        showTopUpFlow = true
+                                    }
+                                    .testTag("quick_add_wallet_$amt")
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ReceiptLong,
-                                    contentDescription = null,
-                                    tint = tokens.ink,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = "Passbook",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = tokens.ink
+                                    text = "+₹$amt",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = tokens.ink,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                 )
                             }
+                        }
+                    }
+
+                    ChildGroupLabel("Recent transactions")
+                    val recentTransactions = uiState.walletTransactions
+                        .sortedByDescending { it.createdAtMillis }
+                        
+                    if (recentTransactions.isEmpty()) {
+                        ChildEmptyText("No wallet transactions yet.")
+                    } else {
+                        recentTransactions.forEach { tx ->
+                            AccountChildItem(
+                                title = tx.title,
+                                subtitle = "${tx.subtitle} • ${formatAccountDate(tx.createdAtMillis)}",
+                                trailing = "${if (tx.isCredit) "+" else "-"}₹${tx.amountInr}",
+                                trailingColor = if (tx.isCredit) tokens.deliveryGreenDeep else tokens.alertRed,
+                                testTag = "account_wallet_tx_${tx.id}"
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                topUpPresetAmount = null
+                                showTopUpFlow = true
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = tokens.deliveryGreenDeep,
+                                contentColor = Color.White
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .defaultMinSize(minHeight = 48.dp)
+                                .testTag("account_wallet_add_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("Add Money", style = MaterialTheme.typography.labelMedium)
+                        }
+                        OutlinedButton(
+                            onClick = { showWalletSheet = true },
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, tokens.border),
+                            modifier = Modifier
+                                .weight(1f)
+                                .defaultMinSize(minHeight = 48.dp)
+                                .testTag("account_wallet_passbook_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
+                                contentDescription = null,
+                                tint = tokens.ink,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("Passbook", style = MaterialTheme.typography.labelMedium, color = tokens.ink)
                         }
                     }
                 }
             }
 
-            // Saved Addresses Manager under Account Management
-            item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = tokens.surface),
-                    border = BorderStroke(1.dp, tokens.border),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("saved_addresses_card")
+            // Orders
+            if (openSection == null || openSection == SECTION_ORDERS) item {
+                val activeOrdersCount = uiState.orders.count { it.isActive }
+                AccountParentItem(
+                    key = SECTION_ORDERS,
+                    icon = Icons.AutoMirrored.Rounded.ReceiptLong,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
+                    title = "Orders",
+                    summary = "${uiState.orders.size} orders • $activeOrdersCount active",
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_ORDERS) },
+                    testTag = "account_orders_shortcut"
                 ) {
-                    Column(
-                        modifier = Modifier.padding(metrics.cardPadding),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    AccountDetailRow("Total orders", "${uiState.orders.size}")
+                    AccountDetailRow("Delivered", "$deliveredOrdersCount")
+                    AccountDetailRow("Active", "$activeOrdersCount")
+                    AccountDetailRow(
+                        label = "Total savings",
+                        value = "₹$totalSavings",
+                        valueColor = tokens.deliveryGreenDeep
+                    )
+
+                    ChildGroupLabel("Recent orders")
+                    val recentOrders = uiState.orders
+                        .sortedByDescending { it.createdAtMillis }
+                        
+                    if (recentOrders.isEmpty()) {
+                        ChildEmptyText("No orders yet. Your orders will appear here.")
+                    } else {
+                        recentOrders.forEach { order ->
+                            AccountChildItem(
+                                title = "#${order.orderId} • ${order.stage.title}",
+                                subtitle = "${formatAccountDate(order.createdAtMillis)} • " +
+                                    "${itemCountLabel(order.totalItemCount)} • ${order.deliveryAddressLabel}",
+                                trailing = "₹${order.totalPaid}",
+                                trailingColor = tokens.ink,
+                                testTag = "account_order_${order.orderId}"
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = onOpenOrderHistory,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("account_orders_view_all")
+                    ) {
+                        Text(
+                            text = "Reorder, invoices & restock",
+                            color = tokens.deliveryGreenDeep,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Saved Addresses
+            if (openSection == null || openSection == SECTION_ADDRESSES) item {
+                val defaultAddress = uiState.savedAddresses.firstOrNull { it.isDefault }
+                AccountParentItem(
+                    key = SECTION_ADDRESSES,
+                    icon = Icons.Rounded.LocationOn,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
+                    title = "Saved Addresses",
+                    summary = "${uiState.savedAddresses.size} saved" +
+                        (defaultAddress?.let { " • Default: ${it.label}" } ?: ""),
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_ADDRESSES) },
+                    testTag = "saved_addresses_card"
+                ) {
+                    if (uiState.savedAddresses.isEmpty()) {
+                        ChildEmptyText("No saved addresses yet. Tap 'Add Address' to drop a map pin.")
+                    } else {
+                        uiState.savedAddresses.forEach { addr ->
+                            SavedAddressRow(
+                                address = addr,
+                                canDelete = uiState.savedAddresses.size > 1,
+                                onSetDefault = { onSetDefaultAddress(addr.id) },
+                                onDelete = { onDeleteAddress(addr.id) }
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = { showAddAddressDialog = true },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = tokens.brandYellow,
+                            contentColor = tokens.onBrandYellow
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .testTag("account_add_address_button")
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Add Address", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+
+            // Help & Support
+            if (openSection == null || openSection == SECTION_SUPPORT) item {
+                AccountParentItem(
+                    key = SECTION_SUPPORT,
+                    icon = Icons.Rounded.SupportAgent,
+                    iconBackground = tokens.deliveryGreenSoft,
+                    iconTint = tokens.deliveryGreenDeep,
+                    title = "Help & Support",
+                    summary = if (uiState.openSupportTicketCount > 0) {
+                        "${uiState.openSupportTicketCount} open tickets"
+                    } else {
+                        "No open tickets"
+                    },
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_SUPPORT) },
+                    testTag = "account_support_banner"
+                ) {
+                    AccountDetailRow("Open tickets", "${uiState.openSupportTicketCount}")
+                    AccountDetailRow("Total tickets", "${uiState.supportTickets.size}")
+
+                    ChildGroupLabel("Recent tickets")
+                    val recentTickets = uiState.supportTickets
+                        .sortedByDescending { it.updatedAtMillis }
+                        
+                    if (recentTickets.isEmpty()) {
+                        ChildEmptyText("No support tickets raised.")
+                    } else {
+                        recentTickets.forEach { ticket ->
+                            AccountChildItem(
+                                title = ticket.category.label,
+                                subtitle = "Order #${ticket.orderId} • ${formatAccountDate(ticket.updatedAtMillis)}",
+                                trailing = ticket.status.label,
+                                trailingColor = tokens.deliveryGreenDeep,
+                                testTag = "account_ticket_${ticket.ticketId}"
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = onOpenSupportHub,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("account_support_get_help")
+                    ) {
+                        Text(
+                            text = "Get Help • Missing item, refund or live chat",
+                            color = tokens.deliveryGreenDeep,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Settings & Preferences
+            if (openSection == null || openSection == SECTION_SETTINGS) item {
+                AccountParentItem(
+                    key = SECTION_SETTINGS,
+                    icon = Icons.Rounded.Settings,
+                    iconBackground = tokens.surfaceElevated,
+                    iconTint = tokens.ink,
+                    title = "Settings & Preferences",
+                    summary = listOf(
+                        if (uiState.preferences.isDarkTheme) "Dark mode" else "Light mode",
+                        "Zoom ${uiState.preferences.screenZoomPercent}%",
+                        if (uiState.preferences.notificationsEnabled) "Alerts on" else "Alerts off"
+                    ).joinToString(" • "),
+                    openSection = openSection,
+                    onOpen = { onOpenSection(SECTION_SETTINGS) }
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
+                            Icon(
+                                imageVector = Icons.Rounded.DarkMode,
+                                contentDescription = null,
+                                tint = tokens.ink,
+                                modifier = Modifier.size(metrics.iconMedium)
+                            )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Saved Addresses",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = tokens.ink,
-                                    fontWeight = FontWeight.Bold
+                                    text = "Dark Mode",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = tokens.ink
                                 )
                                 Text(
-                                    text = "Delivery locations for rapid 8-minute delivery",
+                                    text = "Switch between crisp Light & Dark UI",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = tokens.muted
                                 )
                             }
-                            Spacer(Modifier.width(8.dp))
-                            Button(
-                                onClick = { showAddAddressDialog = true },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = tokens.brandYellow,
-                                    contentColor = tokens.onBrandYellow
-                                ),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-                                modifier = Modifier
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .testTag("account_add_address_button")
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text("Add Address", style = MaterialTheme.typography.labelSmall)
-                            }
                         }
-
-                        if (uiState.savedAddresses.isEmpty()) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = tokens.surfaceElevated,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "No saved addresses yet. Tap '+ Add Address' to drop a map pin.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = tokens.muted,
-                                    modifier = Modifier.padding(14.dp)
-                                )
-                            }
-                        } else {
-                            uiState.savedAddresses.forEach { addr ->
-                                SavedAddressRow(
-                                    address = addr,
-                                    canDelete = uiState.savedAddresses.size > 1,
-                                    onSetDefault = { onSetDefaultAddress(addr.id) },
-                                    onDelete = { onDeleteAddress(addr.id) }
-                                )
-                            }
-                        }
+                        Switch(
+                            checked = uiState.preferences.isDarkTheme,
+                            onCheckedChange = onToggleTheme,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = tokens.onBrandYellow,
+                                checkedTrackColor = tokens.brandYellow
+                            ),
+                            modifier = Modifier.testTag("settings_theme_switch")
+                        )
                     }
-                }
-            }
 
-            // Order History Tab Shortcut Card
-            item {
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = tokens.surface),
-                    border = BorderStroke(1.dp, tokens.border),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable(onClick = onOpenOrderHistory)
-                        .testTag("account_orders_shortcut")
-                ) {
+                    HorizontalDivider(color = tokens.border)
+
+                    ScreenZoomControlSection(
+                        zoomPercent = uiState.preferences.screenZoomPercent,
+                        gridColumns = metrics.gridColumns,
+                        onZoomChange = onScreenZoomChange
+                    )
+
+                    HorizontalDivider(color = tokens.border)
+
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(metrics.cardPadding),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            color = tokens.brandYellowSoft,
-                            shape = CircleShape,
-                            modifier = Modifier.size(maxOf(46.dp, metrics.badgeButtonSize))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ReceiptLong,
-                                    contentDescription = "Order History",
-                                    tint = tokens.ink,
-                                    modifier = Modifier.size(metrics.iconMedium)
-                                )
-                            }
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Order History & Reorder",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = tokens.ink,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "$deliveredOrdersCount past orders • Invoices, reorder & restock",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = tokens.muted
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                            contentDescription = "Open Orders tab",
-                            tint = tokens.muted
-                        )
-                    }
-                }
-            }
-
-            // Help & Customer Support Hub Banner
-            item {
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = tokens.surface),
-                    border = BorderStroke(1.dp, tokens.deliveryGreen.copy(alpha = 0.45f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable(onClick = onOpenSupportHub)
-                        .testTag("account_support_banner")
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(metrics.cardPadding),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            color = tokens.deliveryGreenSoft,
-                            shape = CircleShape,
-                            modifier = Modifier.size(maxOf(46.dp, metrics.badgeButtonSize))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Rounded.SupportAgent,
-                                    contentDescription = "Customer Support",
-                                    tint = tokens.deliveryGreenDeep,
-                                    modifier = Modifier.size(metrics.iconMedium)
-                                )
-                            }
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = "Help & Customer Support",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = tokens.ink,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                if (uiState.openSupportTicketCount > 0) {
-                                    Surface(
-                                        color = tokens.brandYellow,
-                                        shape = RoundedCornerShape(50)
-                                    ) {
-                                        Text(
-                                            text = "${uiState.openSupportTicketCount} Open",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = tokens.onBrandYellow,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            Text(
-                                text = "Missing item, refund, replacement or live chat",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = tokens.muted
-                            )
-                        }
-                        TextButton(onClick = onOpenSupportHub) {
-                            Text(
-                                text = "Get Help",
-                                color = tokens.deliveryGreenDeep,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Settings Section
-            item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = tokens.surface),
-                    border = BorderStroke(1.dp, tokens.border),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(metrics.cardPadding),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Settings & Preferences",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = tokens.ink
-                        )
-
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.DarkMode,
-                                    contentDescription = null,
-                                    tint = tokens.ink,
-                                    modifier = Modifier.size(metrics.iconMedium)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Dark Mode",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = tokens.ink
-                                    )
-                                    Text(
-                                        text = "Switch between crisp Light & Dark UI",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = tokens.muted
-                                    )
-                                }
-                            }
-                            Switch(
-                                checked = uiState.preferences.isDarkTheme,
-                                onCheckedChange = onToggleTheme,
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = tokens.onBrandYellow,
-                                    checkedTrackColor = tokens.brandYellow
-                                ),
-                                modifier = Modifier.testTag("settings_theme_switch")
-                            )
-                        }
-
-                        HorizontalDivider(color = tokens.border)
-
-                        ScreenZoomControlSection(
-                            zoomPercent = uiState.preferences.screenZoomPercent,
-                            gridColumns = metrics.gridColumns,
-                            onZoomChange = onScreenZoomChange
-                        )
-
-                        HorizontalDivider(color = tokens.border)
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Notifications,
-                                    contentDescription = null,
-                                    tint = tokens.ink,
-                                    modifier = Modifier.size(metrics.iconMedium)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Order Alerts",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = tokens.ink
-                                    )
-                                    Text(
-                                        text = "Live status bar updates for stages",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = tokens.muted
-                                    )
-                                }
-                            }
-                            Switch(
-                                checked = uiState.preferences.notificationsEnabled,
-                                onCheckedChange = onToggleNotifications,
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = tokens.deliveryGreenDeep
-                                ),
-                                modifier = Modifier.testTag("settings_notifications_switch")
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                    !NotificationHelper.hasNotificationPermission(context)
-                                ) {
-                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                } else {
-                                    NotificationHelper.sendTestNotification(context)
-                                    onShowMessage("Test notification sent to status bar!")
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .defaultMinSize(minHeight = 48.dp)
-                                .testTag("send_test_notification_button")
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.NotificationsActive,
+                                imageVector = Icons.Rounded.Notifications,
                                 contentDescription = null,
+                                tint = tokens.ink,
                                 modifier = Modifier.size(metrics.iconMedium)
                             )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Send Test Notification")
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Order Alerts",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = tokens.ink
+                                )
+                                Text(
+                                    text = "Live status bar updates for stages",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = tokens.muted
+                                )
+                            }
                         }
+                        Switch(
+                            checked = uiState.preferences.notificationsEnabled,
+                            onCheckedChange = onToggleNotifications,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = tokens.deliveryGreenDeep
+                            ),
+                            modifier = Modifier.testTag("settings_notifications_switch")
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                !NotificationHelper.hasNotificationPermission(context)
+                            ) {
+                                notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                NotificationHelper.sendTestNotification(context)
+                                onShowMessage("Test notification sent to status bar!")
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, tokens.border),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.ink),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 48.dp)
+                            .testTag("send_test_notification_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.NotificationsActive,
+                            contentDescription = null,
+                            modifier = Modifier.size(metrics.iconMedium)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Send Test Notification")
                     }
                 }
             }
 
             // Sign Out Button
-            item {
+            if (openSection == null) item {
                 OutlinedButton(
                     onClick = onSignOut,
                     shape = RoundedCornerShape(14.dp),
@@ -819,10 +782,16 @@ fun AccountHistoryScreen(
             balanceInr = uiState.walletBalance,
             transactions = uiState.walletTransactions,
             onDismiss = { showWalletSheet = false },
-            onAddMoney = { amount ->
-                onAddWalletMoney(amount)
-                onShowMessage("Added ₹$amount to QuickKart Wallet!")
-            }
+            onAddMoney = onAddWalletMoney
+        )
+    }
+
+    if (showTopUpFlow) {
+        WalletTopUpFlow(
+            currentBalanceInr = uiState.walletBalance,
+            presetAmountInr = topUpPresetAmount,
+            onDismiss = { showTopUpFlow = false },
+            onPaymentSuccess = onAddWalletMoney
         )
     }
 
@@ -856,6 +825,263 @@ fun AccountHistoryScreen(
                 showAddAddressDialog = false
                 onShowMessage("Saved $label address to your account!")
             }
+        )
+    }
+}
+
+private const val SECTION_PROFILE = "profile"
+private const val SECTION_WALLET = "wallet"
+private const val SECTION_ORDERS = "orders"
+private const val SECTION_ADDRESSES = "addresses"
+private const val SECTION_SUPPORT = "support"
+private const val SECTION_SETTINGS = "settings"
+
+private fun accountSectionTitle(section: String): String = when (section) {
+    SECTION_PROFILE -> "Profile"
+    SECTION_WALLET -> "Wallet"
+    SECTION_ORDERS -> "Orders"
+    SECTION_ADDRESSES -> "Saved Addresses"
+    SECTION_SUPPORT -> "Help & Support"
+    SECTION_SETTINGS -> "Settings & Preferences"
+    else -> "Account"
+}
+
+private fun formatAccountDate(millis: Long): String =
+    SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(millis))
+
+/**
+ * A parent setting in the Account section.
+ *
+ * On the Account list ([openSection] == null) it renders as a row with a ">" chevron that
+ * opens the setting in its own screen. On that screen ([openSection] == [key]) it renders
+ * [content] — the current account details for that setting — as child items.
+ */
+@Composable
+private fun AccountParentItem(
+    key: String,
+    icon: ImageVector,
+    iconBackground: Color,
+    iconTint: Color,
+    title: String,
+    summary: String,
+    openSection: String?,
+    onOpen: () -> Unit,
+    testTag: String = "account_section_$key",
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val tokens = QuickKartThemeTokens.colors
+    val metrics = QuickKartMetricsTokens.metrics
+
+    if (openSection == key) {
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = tokens.surface),
+            border = BorderStroke(1.dp, tokens.border),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("${testTag}_children")
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(metrics.cardPadding),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                content = content
+            )
+        }
+        return
+    }
+
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = tokens.surface),
+        border = BorderStroke(1.dp, tokens.border),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onOpen)
+            .testTag(testTag)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(metrics.cardPadding),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                color = iconBackground,
+                shape = CircleShape,
+                modifier = Modifier.size(maxOf(42.dp, metrics.badgeButtonSize))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(metrics.iconMedium)
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = tokens.ink,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.muted
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = "Open $title",
+                tint = tokens.muted
+            )
+        }
+    }
+}
+
+/** Header with a back arrow for screens opened from the Account section. */
+@Composable
+fun AccountSubScreenTopBar(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tokens = QuickKartThemeTokens.colors
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("account_sub_screen_top_bar"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.testTag("account_sub_screen_back")
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = "Back",
+                tint = tokens.ink
+            )
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            color = tokens.ink,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+/** A label/value child item showing one current account detail. */
+@Composable
+private fun AccountDetailRow(
+    label: String,
+    value: String,
+    valueColor: Color = QuickKartThemeTokens.colors.ink,
+    emphasize: Boolean = false
+) {
+    val tokens = QuickKartThemeTokens.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = tokens.muted,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            style = if (emphasize) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+            color = valueColor,
+            fontWeight = if (emphasize) FontWeight.ExtraBold else FontWeight.SemiBold,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+/** A record-style child item (an order, a transaction, a ticket). */
+@Composable
+private fun AccountChildItem(
+    title: String,
+    subtitle: String,
+    trailing: String,
+    trailingColor: Color,
+    testTag: String
+) {
+    val tokens = QuickKartThemeTokens.colors
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = tokens.surfaceElevated,
+        border = BorderStroke(1.dp, tokens.border),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = tokens.ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.muted,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = trailing,
+                style = MaterialTheme.typography.labelLarge,
+                color = trailingColor,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChildGroupLabel(text: String) {
+    Text(
+        text = text.uppercase(Locale.getDefault()),
+        style = MaterialTheme.typography.labelSmall,
+        color = QuickKartThemeTokens.colors.muted,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 4.dp)
+    )
+}
+
+@Composable
+private fun ChildEmptyText(text: String) {
+    val tokens = QuickKartThemeTokens.colors
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = tokens.surfaceElevated,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = tokens.muted,
+            modifier = Modifier.padding(14.dp)
         )
     }
 }
@@ -1078,6 +1304,7 @@ private fun ScreenZoomControlSection(
                             sliderValue = DEFAULT_SCREEN_ZOOM_PERCENT.toFloat()
                             onZoomChange(DEFAULT_SCREEN_ZOOM_PERCENT)
                         },
+                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
                         modifier = Modifier.testTag("reset_screen_zoom_button")
                     ) {
                         Text("Reset", fontWeight = FontWeight.Bold)

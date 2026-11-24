@@ -1,6 +1,13 @@
 package com.example.ui
 
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import com.example.util.itemCountLabel
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -70,6 +77,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.screens.AccountHistoryScreen
+import com.example.ui.screens.AccountSubScreenTopBar
 import com.example.ui.screens.CartCheckoutScreen
 import com.example.ui.screens.LiveTrackingScreen
 import com.example.ui.screens.LoginScreen
@@ -88,6 +96,10 @@ import com.example.ui.theme.metricsForWidth
 import kotlinx.coroutines.launch
 
 const val ROUTE_SUPPORT = "support"
+const val ROUTE_ACCOUNT_SECTION = "account/{section}"
+
+/** Screens pushed on top of a tab: they show a back arrow and hide the bottom navigation. */
+private val SUB_SCREEN_ROUTES = setOf(ROUTE_SUPPORT, ROUTE_ACCOUNT_SECTION, BottomTab.ORDERS.route)
 
 @Composable
 fun QuickKartApp(
@@ -95,6 +107,20 @@ fun QuickKartApp(
     initialDestination: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Status/navigation bar icons follow the app's own Light/Dark setting (not the phone's),
+    // with transparent bars so no grey scrim is drawn over the app.
+    val activity = LocalContext.current as? ComponentActivity
+    val isDarkTheme = uiState.preferences.isDarkTheme
+    DisposableEffect(activity, isDarkTheme) {
+        val barStyle = if (isDarkTheme) {
+            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        }
+        activity?.enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+        onDispose { }
+    }
 
     QuickKartTheme(
         darkTheme = uiState.preferences.isDarkTheme,
@@ -192,7 +218,7 @@ fun QuickKartApp(
                 add(BottomTab.HOME)
                 add(BottomTab.CART)
                 if (showTrackTab) add(BottomTab.TRACK)
-                add(BottomTab.ORDERS)
+                // Orders is no longer a footer tab; it is reached from Account.
                 add(BottomTab.ACCOUNT)
             }
         }
@@ -218,7 +244,8 @@ fun QuickKartApp(
             }
         }
 
-        if (currentRoute != BottomTab.HOME.route && currentRoute != ROUTE_SUPPORT) {
+        // Sub-screens use the default back behaviour (pop to the previous screen).
+        if (currentRoute != BottomTab.HOME.route && currentRoute !in SUB_SCREEN_ROUTES) {
             BackHandler {
                 navigateToTab(BottomTab.HOME)
             }
@@ -236,7 +263,7 @@ fun QuickKartApp(
         )
 
                 val useNavRail = metrics.useNavRail
-                val showTopLevelNav = currentRoute != ROUTE_SUPPORT
+                val showTopLevelNav = currentRoute !in SUB_SCREEN_ROUTES
 
             Scaffold(
                 containerColor = tokens.background,
@@ -284,11 +311,15 @@ fun QuickKartApp(
                     }
                 }
             ) { innerPadding ->
+                // When the bottom tab bar is hidden (sub-screens, nav-rail layouts) nothing else
+                // reserves the system navigation bar area, so pad for it here.
+                val bottomBarVisible = showTopLevelNav && !useNavRail
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
                         .statusBarsPadding()
+                        .then(if (bottomBarVisible) Modifier else Modifier.navigationBarsPadding())
                 ) {
                     if (showTopLevelNav && useNavRail) {
                         NavigationRail(
@@ -328,6 +359,36 @@ fun QuickKartApp(
                                 )
                             }
                         }
+                    }
+
+                    // Shared by the Account list and each Account section screen.
+                    val accountScreen: @Composable (String?) -> Unit = { openSection ->
+                        AccountHistoryScreen(
+                            uiState = uiState,
+                            onToggleTheme = viewModel::toggleDarkTheme,
+                            onToggleNotifications = viewModel::toggleNotifications,
+                            onScreenZoomChange = viewModel::setScreenZoomPercent,
+                            onSetDefaultAddress = viewModel::setDefaultAddress,
+                            onDeleteAddress = viewModel::deleteAddress,
+                            onAddAddress = viewModel::addAddress,
+                            onAddWalletMoney = viewModel::addWalletMoney,
+                            onUpdateProfile = { fName, lName, email ->
+                                viewModel.updateUserProfile(fName, lName, email)
+                            },
+                            onOpenOrderHistory = {
+                                navController.navigate(BottomTab.ORDERS.route) { launchSingleTop = true }
+                            },
+                            onOpenSupportHub = {
+                                openSupport(orderId = null, openWizardDirectly = false)
+                            },
+                            onSignOut = viewModel::signOut,
+                            onShowMessage = { msg -> showToast(msg) },
+                            openSection = openSection,
+                            onOpenSection = { section ->
+                                navController.navigate("account/$section") { launchSingleTop = true }
+                            },
+                            onNavigateBack = { navController.popBackStack() }
+                        )
                     }
 
                     NavHost(
@@ -381,8 +442,8 @@ fun QuickKartApp(
                                 onRiderNoteChange = viewModel::updateRiderNote,
                                 onSelectPaymentMethod = viewModel::selectPaymentMethod,
                                 onSelectDeliverySlot = viewModel::selectDeliverySlot,
-                                onAddWalletMoney = { amt ->
-                                    viewModel.addWalletMoney(amt)
+                                onAddWalletMoney = { amt, methodNote ->
+                                    viewModel.addWalletMoney(amt, methodNote)
                                     showToast("Added ₹$amt to QuickKart Wallet!")
                                 },
                                 onPlaceOrder = {
@@ -413,6 +474,13 @@ fun QuickKartApp(
                         }
 
                         composable(BottomTab.ORDERS.route) {
+                            Column(modifier = Modifier.fillMaxSize().background(tokens.background)) {
+                            AccountSubScreenTopBar(
+                                title = "Order History",
+                                onBack = { navController.popBackStack() },
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                            Box(modifier = Modifier.weight(1f)) {
                             OrderHistoryScreen(
                                 uiState = uiState,
                                 onAddRestockItem = { suggestion ->
@@ -428,7 +496,7 @@ fun QuickKartApp(
                                 onQuickReorder = { order ->
                                     viewModel.quickReorder(order)
                                     showToast(
-                                        message = "Added ${order.totalItemCount} items to Cart",
+                                        message = "Added ${itemCountLabel(order.totalItemCount)} to Cart",
                                         actionLabel = "View Cart",
                                         onAction = { navigateToTab(BottomTab.CART) }
                                     )
@@ -444,28 +512,17 @@ fun QuickKartApp(
                                 },
                                 onShowMessage = { msg -> showToast(msg) }
                             )
+                            }
+                            }
                         }
 
                         composable(BottomTab.ACCOUNT.route) {
-                            AccountHistoryScreen(
-                                uiState = uiState,
-                                onToggleTheme = viewModel::toggleDarkTheme,
-                                onToggleNotifications = viewModel::toggleNotifications,
-                                onScreenZoomChange = viewModel::setScreenZoomPercent,
-                                onSetDefaultAddress = viewModel::setDefaultAddress,
-                                onDeleteAddress = viewModel::deleteAddress,
-                                onAddAddress = viewModel::addAddress,
-                                onAddWalletMoney = viewModel::addWalletMoney,
-                                onUpdateProfile = { fName, lName, email ->
-                                    viewModel.updateUserProfile(fName, lName, email)
-                                },
-                                onOpenOrderHistory = { navigateToTab(BottomTab.ORDERS) },
-                                onOpenSupportHub = {
-                                    openSupport(orderId = null, openWizardDirectly = false)
-                                },
-                                onSignOut = viewModel::signOut,
-                                onShowMessage = { msg -> showToast(msg) }
-                            )
+                            accountScreen(null)
+                        }
+
+                        // Each Account parent setting opens here as its own screen.
+                        composable(ROUTE_ACCOUNT_SECTION) { entry ->
+                            accountScreen(entry.arguments?.getString("section"))
                         }
 
                         composable(ROUTE_SUPPORT) {

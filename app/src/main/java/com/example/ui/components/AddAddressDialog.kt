@@ -410,6 +410,7 @@ fun AddAddressDialog(
                                         )
                                         TextButton(
                                             onClick = { showCoordinateEditor = !showCoordinateEditor },
+                                            colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
                                             modifier = Modifier.testTag("toggle_manual_coords_button")
                                         ) {
                                             Icon(
@@ -573,6 +574,7 @@ fun AddAddressDialog(
                                         landmarkManuallyEdited = false
                                         applyResolvedAddress(resolvedPin, forceAllFields = true)
                                     },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
                                     modifier = Modifier.testTag("resync_from_pin_button")
                                 ) {
                                     Icon(

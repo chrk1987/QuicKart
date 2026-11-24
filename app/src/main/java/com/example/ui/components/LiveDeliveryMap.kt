@@ -59,6 +59,7 @@ import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -562,6 +563,11 @@ fun InteractiveDeliveryRouteMap(
                                 }
                         },
                         shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, tokens.border),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = tokens.surface,
+                            contentColor = tokens.ink
+                        ),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                         modifier = Modifier
                             .defaultMinSize(minHeight = 40.dp)

@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import com.example.util.itemCountLabel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -112,7 +113,7 @@ fun OrderFeedbackBottomSheet(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${order.orderId} • ${order.totalItemCount} items • ₹${order.totalPaid}",
+                        text = "${order.orderId} • ${itemCountLabel(order.totalItemCount)} • ₹${order.totalPaid}",
                         style = MaterialTheme.typography.bodySmall,
                         color = tokens.muted
                     )

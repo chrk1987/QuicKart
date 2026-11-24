@@ -406,9 +406,10 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun addWalletMoney(amountInr: Int) {
+    /** Credit the wallet. Call only after the top-up payment has succeeded. */
+    fun addWalletMoney(amountInr: Int, methodNote: String) {
         viewModelScope.launch {
-            repository.addMoneyToWallet(amountInr)
+            repository.addMoneyToWallet(amountInr, methodNote)
         }
     }
 

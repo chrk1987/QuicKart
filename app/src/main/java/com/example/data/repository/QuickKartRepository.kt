@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import com.example.util.itemCountLabel
 import com.example.data.local.CartDao
 import com.example.data.local.CartItemEntity
 import com.example.data.local.FavoriteDao
@@ -364,7 +365,7 @@ class QuickKartRepository(
         val affectedItemsSummary = if (selectedItems.isNotEmpty()) {
             selectedItems.joinToString(", ") { "${it.quantity}x ${it.productName} (${it.variantLabel})" }
         } else {
-            "Full Order ${order.orderId} (${order.totalItemCount} items)"
+            "Full Order ${order.orderId} (${itemCountLabel(order.totalItemCount)})"
         }
         val estimatedAmount = computeSupportRefundEstimate(order, selectedItemKeys, category)
         val outcome = resolveInitialTicketOutcome(

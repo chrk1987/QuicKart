@@ -64,7 +64,7 @@ fun WalletSheet(
     balanceInr: Int,
     transactions: List<WalletTransaction>,
     onDismiss: () -> Unit,
-    onAddMoney: (Int) -> Unit
+    onAddMoney: (amountInr: Int, methodNote: String) -> Unit
 ) {
     val tokens = QuickKartThemeTokens.colors
     val timeFmt = SimpleDateFormat("dd MMM • hh:mm a", Locale.getDefault())
@@ -277,67 +277,11 @@ fun WalletSheet(
     }
 
     if (showAddMoneyDialog) {
-        var customAmount by remember { mutableStateOf("500") }
-        Dialog(onDismissRequest = { showAddMoneyDialog = false }) {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = tokens.surface),
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Add Money to Wallet",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = tokens.ink
-                    )
-                    OutlinedTextField(
-                        value = customAmount,
-                        onValueChange = { customAmount = it.filter { ch -> ch.isDigit() }.take(5) },
-                        label = { Text("Amount (₹)") },
-                        prefix = { Text("₹ ") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(100, 500, 1000).forEach { preset ->
-                            OutlinedButton(
-                                onClick = { customAmount = preset.toString() },
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("₹$preset")
-                            }
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            val amt = customAmount.toIntOrNull() ?: 0
-                            if (amt > 0) {
-                                onAddMoney(amt)
-                                showAddMoneyDialog = false
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = tokens.brandYellow,
-                            contentColor = tokens.onBrandYellow
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("confirm_add_money_button")
-                    ) {
-                        Text("Proceed to Add ₹$customAmount")
-                    }
-                }
-            }
-        }
+        // Money is credited only after the payment flow reports success.
+        WalletTopUpFlow(
+            currentBalanceInr = balanceInr,
+            onDismiss = { showAddMoneyDialog = false },
+            onPaymentSuccess = onAddMoney
+        )
     }
 }

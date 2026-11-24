@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.util.itemCountLabel
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -117,13 +118,16 @@ fun CartCheckoutScreen(
     onRiderNoteChange: (String) -> Unit,
     onSelectPaymentMethod: (PaymentMethod) -> Unit,
     onSelectDeliverySlot: (DeliverySlot) -> Unit,
-    onAddWalletMoney: (Int) -> Unit = {},
+    /** Called only after a top-up payment succeeds, with the method used. */
+    onAddWalletMoney: (amountInr: Int, methodNote: String) -> Unit = { _, _ -> },
     onPlaceOrder: () -> Unit,
     onBrowseStorefront: () -> Unit
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
     var showAddAddressDialog by remember { mutableStateOf(false) }
+    // Non-null while the wallet top-up payment flow is open for this amount.
+    var topUpAmount by remember { mutableStateOf<Int?>(null) }
 
     if (uiState.cartItems.isEmpty()) {
         Box(
@@ -221,9 +225,9 @@ fun CartCheckoutScreen(
                         )
                         Text(
                             text = if (draft.selectedDeliverySlot.isExpress) {
-                                "${uiState.totalCartCount} items • ${uiState.selectedNeighborhood?.etaMinutes ?: 8}-min express delivery"
+                                "${itemCountLabel(uiState.totalCartCount)} • ${uiState.selectedNeighborhood?.etaMinutes ?: 8}-min express delivery"
                             } else {
-                                "${uiState.totalCartCount} items • Scheduled: ${draft.selectedDeliverySlot.displaySummary}"
+                                "${itemCountLabel(uiState.totalCartCount)} • Scheduled: ${draft.selectedDeliverySlot.displaySummary}"
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = tokens.deliveryGreenDeep
@@ -873,7 +877,7 @@ fun CartCheckoutScreen(
                                         )
                                         Spacer(Modifier.width(8.dp))
                                         Button(
-                                            onClick = { onAddWalletMoney(walletShortfall) },
+                                            onClick = { topUpAmount = walletShortfall },
                                             shape = RoundedCornerShape(10.dp),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = tokens.deliveryGreenDeep,
@@ -991,6 +995,15 @@ fun CartCheckoutScreen(
                 onAddAddress(label, full, landmark, nId, area, city, state, postal, country, lat, lng)
                 showAddAddressDialog = false
             }
+        )
+    }
+
+    topUpAmount?.let { amount ->
+        WalletTopUpFlow(
+            currentBalanceInr = uiState.walletBalance,
+            presetAmountInr = amount,
+            onDismiss = { topUpAmount = null },
+            onPaymentSuccess = onAddWalletMoney
         )
     }
 }
