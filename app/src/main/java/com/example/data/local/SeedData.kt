@@ -1,6 +1,7 @@
 package com.example.data.local
 
 import androidx.compose.ui.graphics.Color
+import com.example.data.model.DeliverySlot
 import com.example.data.model.Neighborhood
 import com.example.data.model.OrderLineItem
 import com.example.data.model.OrderRecord
@@ -12,6 +13,12 @@ import com.example.data.model.ProductCategory
 import com.example.data.model.ProductVariant
 import com.example.data.model.PromoCode
 import com.example.data.model.SavedAddress
+import com.example.data.model.SupportFaqTopic
+import com.example.data.model.SupportIssueCategory
+import com.example.data.model.SupportMessage
+import com.example.data.model.SupportResolutionOption
+import com.example.data.model.SupportTicketRecord
+import com.example.data.model.SupportTicketStatus
 import java.util.concurrent.TimeUnit
 
 object SeedData {
@@ -67,12 +74,86 @@ object SeedData {
         "Avoid plastic bag"
     )
 
+    val deliverySlots = listOf(
+        DeliverySlot(
+            id = "slot_express",
+            dayLabel = "Now",
+            title = "8-Min Express",
+            windowText = "Arrives in ~8 mins",
+            badge = "FASTEST",
+            isExpress = true,
+            etaMinutes = 8
+        ),
+        DeliverySlot(
+            id = "slot_today_afternoon",
+            dayLabel = "Today",
+            title = "Afternoon Breeze",
+            windowText = "1:00 PM – 3:00 PM",
+            badge = "ZERO RUSH",
+            isExpress = false,
+            etaMinutes = 120
+        ),
+        DeliverySlot(
+            id = "slot_today_evening",
+            dayLabel = "Today",
+            title = "Evening Prime",
+            windowText = "6:00 PM – 8:00 PM",
+            badge = "POPULAR",
+            isExpress = false,
+            etaMinutes = 180
+        ),
+        DeliverySlot(
+            id = "slot_today_night",
+            dayLabel = "Today",
+            title = "Dinner Prep",
+            windowText = "8:30 PM – 10:30 PM",
+            badge = null,
+            isExpress = false,
+            etaMinutes = 240
+        ),
+        DeliverySlot(
+            id = "slot_tomorrow_morning",
+            dayLabel = "Tomorrow",
+            title = "Morning Farm Drop",
+            windowText = "7:00 AM – 9:00 AM",
+            badge = "FRESH BATCH",
+            isExpress = false,
+            etaMinutes = 600
+        ),
+        DeliverySlot(
+            id = "slot_tomorrow_midday",
+            dayLabel = "Tomorrow",
+            title = "Midday Restock",
+            windowText = "11:00 AM – 1:00 PM",
+            badge = null,
+            isExpress = false,
+            etaMinutes = 720
+        ),
+        DeliverySlot(
+            id = "slot_tomorrow_evening",
+            dayLabel = "Tomorrow",
+            title = "Evening Slot",
+            windowText = "5:00 PM – 7:00 PM",
+            badge = null,
+            isExpress = false,
+            etaMinutes = 840
+        )
+    )
+
     val praiseTags = listOf(
         "Super Fast",
         "Chilled & Fresh",
         "Polite Rider",
         "Followed Note",
         "Zero Spill"
+    )
+
+    val issueTags = listOf(
+        "Late Delivery",
+        "Damaged Pack",
+        "Missing Item",
+        "Wrong Temp",
+        "Rider Issue"
     )
 
     val products: List<Product> = listOf(
@@ -679,6 +760,103 @@ object SeedData {
                 totalPaid = 391,
                 userRating = 4,
                 praiseTags = listOf("Chilled & Fresh")
+            )
+        )
+    }
+
+    val supportFaqTopics = listOf(
+        SupportFaqTopic(
+            id = "faq_missing_item",
+            question = "An item is missing from my bag — how fast do I get a refund?",
+            answer = "Select Missing Item and tap the missing item(s). Under QuickKart's Instant Care Promise, orders up to ₹250 qualify for instant QuickKart Wallet credit in under 10 seconds, or a free 8-minute replacement.",
+            linkedCategory = SupportIssueCategory.MISSING_ITEM
+        ),
+        SupportFaqTopic(
+            id = "faq_damaged_coldchain",
+            question = "Produce bruised or dairy/ice bag wasn't chilled?",
+            answer = "Pick Damaged / Spoiled, optionally attach a quick photo proof from your gallery, and choose either Instant QuickKart Credit or a complimentary cold-chain replacement.",
+            linkedCategory = SupportIssueCategory.DAMAGED_SPOILED
+        ),
+        SupportFaqTopic(
+            id = "faq_wrong_variant",
+            question = "Received the wrong size, weight, or swapped product?",
+            answer = "Tap Wrong Item, check off the swapped product, and we'll dispatch the exact item in 8 minutes or issue an instant refund—no return pickup needed for perishables.",
+            linkedCategory = SupportIssueCategory.WRONG_ITEM
+        ),
+        SupportFaqTopic(
+            id = "faq_delay",
+            question = "My order took longer than the promised delivery window",
+            answer = "Choose Delivery Delay to track pod & rider logs or claim an instant ₹25 delay care credit directly into your QuickKart account.",
+            linkedCategory = SupportIssueCategory.DELIVERY_DELAY
+        ),
+        SupportFaqTopic(
+            id = "faq_promo_upi",
+            question = "Promo code didn't apply or UPI payment debited twice",
+            answer = "Raise a Billing / Promo request on the order and our Care Desk verifies UPI gateway settlement or applies missed promo credits right inside the ticket thread.",
+            linkedCategory = SupportIssueCategory.BILLING_PROMO
+        )
+    )
+
+    fun createSeededSupportTickets(nowMillis: Long = System.currentTimeMillis()): List<SupportTicketRecord> {
+        fun hoursAgo(hours: Long): Long = nowMillis - TimeUnit.HOURS.toMillis(hours)
+        fun daysAgo(days: Long): Long = nowMillis - TimeUnit.DAYS.toMillis(days)
+
+        return listOf(
+            SupportTicketRecord(
+                ticketId = "SUP-4821",
+                orderId = "QK-84311",
+                createdAtMillis = hoursAgo(6),
+                updatedAtMillis = hoursAgo(5),
+                category = SupportIssueCategory.DAMAGED_SPOILED,
+                affectedItemsSummary = "1x Hydroponic Baby Spinach (150 g Box)",
+                affectedAmountInr = 69,
+                preferredResolution = SupportResolutionOption.EXPRESS_REPLACEMENT,
+                resolutionSummary = "8-Min Replacement pod verification queued",
+                status = SupportTicketStatus.UNDER_REVIEW,
+                photoUriString = null,
+                messages = listOf(
+                    SupportMessage(
+                        id = "msg_seed_1",
+                        isUser = true,
+                        text = "The spinach box lid popped open inside the delivery bag.",
+                        timestampMillis = hoursAgo(6)
+                    ),
+                    SupportMessage(
+                        id = "msg_seed_2",
+                        isUser = false,
+                        text = "Ticket SUP-4821 is Under Review for QK-84311. Our Indiranagar Pod Lead is checking fresh stock for a ₹0 replacement, or tap 'Instant Credit' below to receive ₹69 immediately.",
+                        timestampMillis = hoursAgo(5)
+                    )
+                ),
+                csatRating = null
+            ),
+            SupportTicketRecord(
+                ticketId = "SUP-4510",
+                orderId = "QK-83118",
+                createdAtMillis = daysAgo(14),
+                updatedAtMillis = daysAgo(14) + TimeUnit.MINUTES.toMillis(4),
+                category = SupportIssueCategory.DAMAGED_SPOILED,
+                affectedItemsSummary = "1x Vine-Ripened Cherry Tomatoes (200 g Punnet)",
+                affectedAmountInr = 64,
+                preferredResolution = SupportResolutionOption.INSTANT_CREDIT,
+                resolutionSummary = "₹64 Instant QuickKart Credit added",
+                status = SupportTicketStatus.RESOLVED,
+                photoUriString = null,
+                messages = listOf(
+                    SupportMessage(
+                        id = "msg_seed_3",
+                        isUser = true,
+                        text = "A few cherry tomatoes at the bottom of the punnet were squished.",
+                        timestampMillis = daysAgo(14)
+                    ),
+                    SupportMessage(
+                        id = "msg_seed_4",
+                        isUser = false,
+                        text = "Per QuickKart's Instant Care Promise, ₹64 has been credited to your QuickKart Wallet under ref SUP-4510.",
+                        timestampMillis = daysAgo(14) + TimeUnit.MINUTES.toMillis(1)
+                    )
+                ),
+                csatRating = 5
             )
         )
     }

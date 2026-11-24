@@ -35,16 +35,20 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.LocalGroceryStore
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PictureAsPdf
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,13 +60,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -84,10 +92,14 @@ import com.example.data.model.SavedAddress
 import com.example.service.PdfReceiptService
 import com.example.ui.QuickKartUiState
 import com.example.ui.components.AddAddressDialog
+import com.example.ui.components.OrderFeedbackBottomSheet
 import com.example.ui.components.QuickKartLogo
 import com.example.ui.components.SmartRestockReminderBanner
 import com.example.ui.components.SpendingTrendCard
 import com.example.ui.theme.AmberGold
+import com.example.ui.theme.DEFAULT_SCREEN_ZOOM_PERCENT
+import com.example.ui.theme.MAX_SCREEN_ZOOM_PERCENT
+import com.example.ui.theme.MIN_SCREEN_ZOOM_PERCENT
 import com.example.ui.theme.QuickKartMetricsTokens
 import com.example.ui.theme.QuickKartThemeTokens
 import com.example.util.NotificationHelper
@@ -95,6 +107,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -105,11 +118,15 @@ fun AccountHistoryScreen(
     onSelectTimeFilter: (OrderHistoryTimeFilter) -> Unit,
     onQuickReorder: (OrderRecord) -> Unit,
     onReorderCheckout: (OrderRecord) -> Unit,
+    onSubmitRating: (String, Int, List<String>, String) -> Unit,
     onToggleTheme: (Boolean) -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
+    onScreenZoomChange: (Int) -> Unit,
     onSetDefaultAddress: (String) -> Unit,
     onDeleteAddress: (String) -> Unit,
     onAddAddress: (String, String, String, String) -> Unit,
+    onOpenSupportHub: () -> Unit,
+    onOpenSupportForOrder: (OrderRecord) -> Unit,
     onSignOut: () -> Unit,
     onShowMessage: (String) -> Unit
 ) {
@@ -119,6 +136,7 @@ fun AccountHistoryScreen(
     val coroutineScope = rememberCoroutineScope()
     val receiptService = remember(context) { PdfReceiptService(context) }
     var showAddAddressDialog by remember { mutableStateOf(false) }
+    var feedbackTargetOrder by remember { mutableStateOf<OrderRecord?>(null) }
 
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -225,6 +243,82 @@ fun AccountHistoryScreen(
                             size = metrics.badgeButtonSize,
                             cornerRadius = 10.dp
                         )
+                    }
+                }
+            }
+
+            // Help & Customer Support Hub Banner
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = tokens.surface),
+                    border = BorderStroke(1.dp, tokens.deliveryGreen.copy(alpha = 0.45f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable(onClick = onOpenSupportHub)
+                        .testTag("account_support_banner")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(metrics.cardPadding),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            color = tokens.deliveryGreenSoft,
+                            shape = CircleShape,
+                            modifier = Modifier.size(maxOf(46.dp, metrics.badgeButtonSize))
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SupportAgent,
+                                    contentDescription = "Customer Support",
+                                    tint = tokens.deliveryGreenDeep,
+                                    modifier = Modifier.size(metrics.iconMedium)
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "Help & Customer Support",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = tokens.ink,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                if (uiState.openSupportTicketCount > 0) {
+                                    Surface(
+                                        color = tokens.brandYellow,
+                                        shape = RoundedCornerShape(50)
+                                    ) {
+                                        Text(
+                                            text = "${uiState.openSupportTicketCount} Open",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = tokens.onBrandYellow,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            Text(
+                                text = "Missing item, refund, replacement or live chat",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = tokens.muted
+                            )
+                        }
+                        TextButton(onClick = onOpenSupportHub) {
+                            Text(
+                                text = "Get Help",
+                                color = tokens.deliveryGreenDeep,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -347,6 +441,8 @@ fun AccountHistoryScreen(
                         order = order,
                         onQuickReorder = { onQuickReorder(order) },
                         onReorderCheckout = { onReorderCheckout(order) },
+                        onRateOrder = { feedbackTargetOrder = order },
+                        onNeedHelp = { onOpenSupportForOrder(order) },
                         onDownloadReceipt = {
                             coroutineScope.launch {
                                 receiptService.generateAndSaveReceipt(order)
@@ -433,6 +529,15 @@ fun AccountHistoryScreen(
                                 modifier = Modifier.testTag("settings_theme_switch")
                             )
                         }
+
+                        HorizontalDivider(color = tokens.border)
+
+                        // Screen Zoom Slider (default 100%, adaptive font/icon/layout scaling)
+                        ScreenZoomControlSection(
+                            zoomPercent = uiState.preferences.screenZoomPercent,
+                            gridColumns = metrics.gridColumns,
+                            onZoomChange = onScreenZoomChange
+                        )
 
                         HorizontalDivider(color = tokens.border)
 
@@ -595,6 +700,17 @@ fun AccountHistoryScreen(
             }
         )
     }
+
+    feedbackTargetOrder?.let { target ->
+        OrderFeedbackBottomSheet(
+            order = target,
+            onDismiss = { feedbackTargetOrder = null },
+            onSubmit = { stars, tags, comment ->
+                onSubmitRating(target.orderId, stars, tags, comment)
+                onShowMessage("Feedback saved for ${target.orderId}!")
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -603,6 +719,8 @@ private fun HistoricalOrderCard(
     order: OrderRecord,
     onQuickReorder: () -> Unit,
     onReorderCheckout: () -> Unit,
+    onRateOrder: () -> Unit,
+    onNeedHelp: () -> Unit,
     onDownloadReceipt: () -> Unit
 ) {
     val tokens = QuickKartThemeTokens.colors
@@ -668,7 +786,7 @@ private fun HistoricalOrderCard(
                         }
                     }
                     Text(
-                        text = "$dateFormatted • ${order.neighborhoodName}",
+                        text = "$dateFormatted • ${order.neighborhoodName} • ${order.deliveryWindowLabel}",
                         style = MaterialTheme.typography.bodySmall,
                         color = tokens.muted
                     )
@@ -686,6 +804,91 @@ private fun HistoricalOrderCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = tokens.ink
             )
+
+            // Order Feedback Tags / Review Strip + Rate Action
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                order.praiseTags.forEach { tag ->
+                    Surface(
+                        color = tokens.brandYellowSoft,
+                        shape = RoundedCornerShape(50)
+                    ) {
+                        Text(
+                            text = tag,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = tokens.ink,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                Surface(
+                    color = tokens.surfaceElevated,
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, tokens.border),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable(onClick = onRateOrder)
+                        .testTag("rate_order_${order.orderId}")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Star,
+                            contentDescription = null,
+                            tint = AmberGold,
+                            modifier = Modifier.size(metrics.iconSmall)
+                        )
+                        Text(
+                            text = if (order.userRating != null) "Edit Feedback" else "Rate Order",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = tokens.ink,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                Surface(
+                    color = tokens.surfaceElevated,
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, tokens.border),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable(onClick = onNeedHelp)
+                        .testTag("order_help_${order.orderId}")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.SupportAgent,
+                            contentDescription = "Get help for order ${order.orderId}",
+                            tint = tokens.deliveryGreenDeep,
+                            modifier = Modifier.size(metrics.iconSmall)
+                        )
+                        Text(
+                            text = "Help",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = tokens.ink,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
+            if (order.feedbackComment.isNotBlank()) {
+                Text(
+                    text = "\"${order.feedbackComment}\"",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.muted
+                )
+            }
 
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -822,6 +1025,241 @@ private fun SavedAddressRow(
                         contentDescription = "Delete address",
                         tint = tokens.muted,
                         modifier = Modifier.size(metrics.iconMedium)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ScreenZoomControlSection(
+    zoomPercent: Int,
+    gridColumns: Int,
+    onZoomChange: (Int) -> Unit
+) {
+    val tokens = QuickKartThemeTokens.colors
+    val metrics = QuickKartMetricsTokens.metrics
+    var sliderValue by remember { mutableFloatStateOf(zoomPercent.toFloat()) }
+
+    LaunchedEffect(zoomPercent) {
+        sliderValue = zoomPercent.toFloat()
+    }
+
+    val currentStepPercent = ((sliderValue.roundToInt().coerceIn(MIN_SCREEN_ZOOM_PERCENT, MAX_SCREEN_ZOOM_PERCENT) + 2) / 5) * 5
+    val scaleLabel = when {
+        currentStepPercent < 100 -> "Compact"
+        currentStepPercent == 100 -> "Default"
+        currentStepPercent <= 115 -> "Large"
+        else -> "Extra Large"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("screen_zoom_section"),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.FormatSize,
+                contentDescription = null,
+                tint = tokens.ink,
+                modifier = Modifier.size(metrics.iconMedium)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Screen Zoom",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = tokens.ink
+                )
+                Text(
+                    text = "Scales fonts, icons & grid ($gridColumns cols on this display)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.muted
+                )
+            }
+            Surface(
+                color = if (currentStepPercent == DEFAULT_SCREEN_ZOOM_PERCENT) {
+                    tokens.deliveryGreenSoft
+                } else {
+                    tokens.brandYellowSoft
+                },
+                shape = RoundedCornerShape(50),
+                border = BorderStroke(
+                    1.dp,
+                    if (currentStepPercent == DEFAULT_SCREEN_ZOOM_PERCENT) {
+                        tokens.deliveryGreen.copy(alpha = 0.45f)
+                    } else {
+                        tokens.brandYellow
+                    }
+                )
+            ) {
+                Text(
+                    text = "$currentStepPercent% • $scaleLabel",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (currentStepPercent == DEFAULT_SCREEN_ZOOM_PERCENT) {
+                        tokens.deliveryGreenDeep
+                    } else {
+                        tokens.ink
+                    },
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .testTag("screen_zoom_badge")
+                )
+            }
+        }
+
+        // Live Responsive Preview Strip
+        Surface(
+            color = tokens.surfaceElevated,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, tokens.border),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    color = tokens.brandYellowSoft,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.size(metrics.badgeButtonSize)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.LocalGroceryStore,
+                            contentDescription = null,
+                            tint = tokens.ink,
+                            modifier = Modifier.size(metrics.iconMedium)
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Live UI Preview • Fresh A2 Milk",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = tokens.ink
+                    )
+                    Text(
+                        text = "Icons ${metrics.iconMedium.value.roundToInt()}dp • Fonts scaled to $currentStepPercent%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.muted
+                    )
+                }
+                if (currentStepPercent != DEFAULT_SCREEN_ZOOM_PERCENT) {
+                    TextButton(
+                        onClick = {
+                            sliderValue = DEFAULT_SCREEN_ZOOM_PERCENT.toFloat()
+                            onZoomChange(DEFAULT_SCREEN_ZOOM_PERCENT)
+                        },
+                        modifier = Modifier.testTag("reset_screen_zoom_button")
+                    ) {
+                        Text("Reset", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Slider with -5% / +5% precision buttons (48dp touch targets)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            IconButton(
+                onClick = {
+                    val next = (zoomPercent - 5).coerceAtLeast(MIN_SCREEN_ZOOM_PERCENT)
+                    sliderValue = next.toFloat()
+                    onZoomChange(next)
+                },
+                enabled = zoomPercent > MIN_SCREEN_ZOOM_PERCENT,
+                modifier = Modifier
+                    .size(48.dp)
+                    .testTag("zoom_decrease_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Remove,
+                    contentDescription = "Decrease screen zoom",
+                    tint = if (zoomPercent > MIN_SCREEN_ZOOM_PERCENT) tokens.ink else tokens.muted,
+                    modifier = Modifier.size(metrics.iconMedium)
+                )
+            }
+
+            Slider(
+                value = sliderValue,
+                onValueChange = { raw ->
+                    sliderValue = raw
+                    val snapped = ((raw.roundToInt().coerceIn(MIN_SCREEN_ZOOM_PERCENT, MAX_SCREEN_ZOOM_PERCENT) + 2) / 5) * 5
+                    if (snapped != zoomPercent) {
+                        onZoomChange(snapped)
+                    }
+                },
+                valueRange = MIN_SCREEN_ZOOM_PERCENT.toFloat()..MAX_SCREEN_ZOOM_PERCENT.toFloat(),
+                steps = ((MAX_SCREEN_ZOOM_PERCENT - MIN_SCREEN_ZOOM_PERCENT) / 5) - 1,
+                colors = SliderDefaults.colors(
+                    thumbColor = tokens.brandYellow,
+                    activeTrackColor = tokens.deliveryGreenDeep,
+                    inactiveTrackColor = tokens.border
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("screen_zoom_slider")
+            )
+
+            IconButton(
+                onClick = {
+                    val next = (zoomPercent + 5).coerceAtMost(MAX_SCREEN_ZOOM_PERCENT)
+                    sliderValue = next.toFloat()
+                    onZoomChange(next)
+                },
+                enabled = zoomPercent < MAX_SCREEN_ZOOM_PERCENT,
+                modifier = Modifier
+                    .size(48.dp)
+                    .testTag("zoom_increase_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = "Increase screen zoom",
+                    tint = if (zoomPercent < MAX_SCREEN_ZOOM_PERCENT) tokens.ink else tokens.muted,
+                    modifier = Modifier.size(metrics.iconMedium)
+                )
+            }
+        }
+
+        // Quick Preset Chips
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(85, 100, 115, 130).forEach { preset ->
+                val selected = zoomPercent == preset
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = if (selected) tokens.ink else tokens.surfaceElevated,
+                    border = BorderStroke(1.dp, if (selected) tokens.ink else tokens.border),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable {
+                            sliderValue = preset.toFloat()
+                            onZoomChange(preset)
+                        }
+                        .testTag("zoom_preset_$preset")
+                ) {
+                    Text(
+                        text = if (preset == 100) "100% Default" else "$preset%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) tokens.background else tokens.ink,
+                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)
                     )
                 }
             }

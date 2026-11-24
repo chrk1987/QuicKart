@@ -5,9 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.PreferencesManager
 import com.example.data.local.QuickKartDatabase
+import com.example.data.local.SeedData
 import com.example.data.local.UserPreferences
 import com.example.data.model.BillBreakdown
 import com.example.data.model.CartItem
+import com.example.data.model.DeliverySlot
 import com.example.data.model.Neighborhood
 import com.example.data.model.OrderHistoryTimeFilter
 import com.example.data.model.OrderLineItem
@@ -19,6 +21,11 @@ import com.example.data.model.ProductCategory
 import com.example.data.model.PromoCode
 import com.example.data.model.RestockSuggestion
 import com.example.data.model.SavedAddress
+import com.example.data.model.SupportIssueCategory
+import com.example.data.model.SupportResolutionOption
+import com.example.data.model.SupportTicketRecord
+import com.example.data.model.SupportTicketStatus
+import com.example.data.model.filterCatalogProducts
 import com.example.data.repository.QuickKartRepository
 import com.example.util.NotificationHelper
 import kotlinx.coroutines.Job
@@ -49,7 +56,8 @@ data class CheckoutDraft(
     val isCustomTip: Boolean = false,
     val selectedInstructions: Set<String> = setOf("Leave at the door"),
     val riderNote: String = "",
-    val paymentMethod: PaymentMethod = PaymentMethod.UPI
+    val paymentMethod: PaymentMethod = PaymentMethod.UPI,
+    val selectedDeliverySlot: DeliverySlot = SeedData.deliverySlots.first()
 )
 
 data class QuickKartUiState(
@@ -59,6 +67,7 @@ data class QuickKartUiState(
     val selectedNeighborhood: Neighborhood? = null,
     val products: List<Product> = emptyList(),
     val selectedCategory: ProductCategory = ProductCategory.ALL,
+    val favoritesOnly: Boolean = false,
     val searchQuery: String = "",
     val isVoiceListening: Boolean = false,
     val favoriteIds: Set<String> = emptySet(),
@@ -74,21 +83,24 @@ data class QuickKartUiState(
     val historyTimeFilter: OrderHistoryTimeFilter = OrderHistoryTimeFilter.ALL_TIME,
     val checkoutDraft: CheckoutDraft = CheckoutDraft(),
     val billBreakdown: BillBreakdown = BillBreakdown(0, 0, 0, 0, 0, 0, 0),
-    val autoSimulateTracking: Boolean = false
+    val autoSimulateTracking: Boolean = false,
+    val supportTickets: List<SupportTicketRecord> = emptyList()
 ) {
     val totalCartCount: Int get() = cartItems.sumOf { it.quantity }
+    val openSupportTicketCount: Int
+        get() = supportTickets.count { it.status != SupportTicketStatus.RESOLVED }
+
+    val favoriteProducts: List<Product>
+        get() = products.filter { it.id in favoriteIds }
 
     val filteredProducts: List<Product>
-        get() = products.filter { product ->
-            val matchesCat = selectedCategory == ProductCategory.ALL || product.category == selectedCategory
-            val q = searchQuery.trim()
-            val matchesQuery = q.isEmpty() ||
-                product.name.contains(q, ignoreCase = true) ||
-                product.brand.contains(q, ignoreCase = true) ||
-                product.category.label.contains(q, ignoreCase = true) ||
-                product.description.contains(q, ignoreCase = true)
-            matchesCat && matchesQuery
-        }
+        get() = filterCatalogProducts(
+            products = products,
+            selectedCategory = selectedCategory,
+            searchQuery = searchQuery,
+            favoritesOnly = favoritesOnly,
+            favoriteIds = favoriteIds
+        )
 
     val matchingCategories: List<ProductCategory>
         get() {
@@ -124,6 +136,7 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val repository: QuickKartRepository
     private val selectedCategoryFlow = MutableStateFlow(ProductCategory.ALL)
+    private val favoritesOnlyFlow = MutableStateFlow(false)
     private val searchQueryFlow = MutableStateFlow("")
     private val isVoiceListeningFlow = MutableStateFlow(false)
     private val historySearchFlow = MutableStateFlow("")
@@ -135,6 +148,7 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
 
     private var countdownJob: Job? = null
     private var autoSimJob: Job? = null
+    private var lastNotifiedOrderId: String? = null
 
     init {
         val db = QuickKartDatabase.getInstance(application)
@@ -144,6 +158,7 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
             cartDao = db.cartDao(),
             addressDao = db.savedAddressDao(),
             orderDao = db.orderDao(),
+            supportTicketDao = db.supportTicketDao(),
             prefsManager = prefs
         )
         NotificationHelper.ensureChannel(application)
@@ -159,11 +174,13 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         val favorites: Set<String>,
         val cart: List<CartItem>,
         val addresses: List<SavedAddress>,
-        val orders: List<OrderRecord>
+        val orders: List<OrderRecord>,
+        val supportTickets: List<SupportTicketRecord>
     )
 
     private data class FilterStreams(
         val category: ProductCategory,
+        val favoritesOnly: Boolean,
         val search: String,
         val listening: Boolean,
         val historySearch: String,
@@ -181,38 +198,50 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         repository.savedAddresses,
         repository.orders
     ) { prefs, favs, cart, addrs, orders ->
-        CoreStreams(prefs, favs, cart, addrs, orders)
+        CoreStreams(prefs, favs, cart, addrs, orders, emptyList())
+    }.combine(repository.supportTickets) { core, tickets ->
+        core.copy(supportTickets = tickets)
     }
 
-    private val filterFlow = combine(
+    private val catalogFilterFlow = combine(
         selectedCategoryFlow,
+        favoritesOnlyFlow,
         searchQueryFlow,
-        isVoiceListeningFlow,
+        isVoiceListeningFlow
+    ) { cat, favOnly, search, listening ->
+        CatalogFilterState(cat, favOnly, search, listening)
+    }
+
+    private data class CatalogFilterState(
+        val category: ProductCategory,
+        val favoritesOnly: Boolean,
+        val search: String,
+        val listening: Boolean
+    )
+
+    private val filterFlow = combine(
+        catalogFilterFlow,
         historySearchFlow,
-        historyTimeFilterFlow
-    ) { cat, search, listening, histSearch, histFilter ->
-        listOf(cat, search, listening, histSearch, histFilter)
-    }.combine(
-        combine(
-            checkoutDraftFlow,
-            autoSimFlow,
-            isReadyFlow,
-            lastActiveOrderIdFlow
-        ) { draft, sim, ready, lastId ->
-            listOf(draft, sim, ready, lastId)
-        }
-    ) { first, second ->
+        historyTimeFilterFlow,
+        checkoutDraftFlow,
+        autoSimFlow
+    ) { catalog, histSearch, histFilter, draft, sim ->
         FilterStreams(
-            category = first[0] as ProductCategory,
-            search = first[1] as String,
-            listening = first[2] as Boolean,
-            historySearch = first[3] as String,
-            historyFilter = first[4] as OrderHistoryTimeFilter,
-            checkout = second[0] as CheckoutDraft,
-            autoSim = second[1] as Boolean,
-            ready = second[2] as Boolean,
-            lastTrackedOrderId = second[3] as String?
+            category = catalog.category,
+            favoritesOnly = catalog.favoritesOnly,
+            search = catalog.search,
+            listening = catalog.listening,
+            historySearch = histSearch,
+            historyFilter = histFilter,
+            checkout = draft,
+            autoSim = sim,
+            ready = true,
+            lastTrackedOrderId = null
         )
+    }.combine(
+        combine(isReadyFlow, lastActiveOrderIdFlow) { ready, lastId -> ready to lastId }
+    ) { streams, (ready, lastId) ->
+        streams.copy(ready = ready, lastTrackedOrderId = lastId)
     }
 
     val uiState: StateFlow<QuickKartUiState> = combine(coreFlow, filterFlow) { core, filters ->
@@ -244,6 +273,7 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
             selectedNeighborhood = selectedNeighborhood,
             products = repository.products,
             selectedCategory = filters.category,
+            favoritesOnly = filters.favoritesOnly,
             searchQuery = filters.search,
             isVoiceListening = filters.listening,
             favoriteIds = core.favorites,
@@ -259,7 +289,8 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
             historyTimeFilter = filters.historyFilter,
             checkoutDraft = filters.checkout,
             billBreakdown = bill,
-            autoSimulateTracking = filters.autoSim
+            autoSimulateTracking = filters.autoSim,
+            supportTickets = core.supportTickets
         )
     }.stateIn(
         scope = viewModelScope,
@@ -301,11 +332,25 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         countdownJob = viewModelScope.launch {
             while (true) {
                 delay(1000L)
-                val active = uiState.value.activeOrder ?: continue
+                val snapshot = uiState.value
+                val active = snapshot.activeOrder ?: continue
+                val nextRemaining = (active.remainingSeconds - 1).coerceAtLeast(0)
                 if (active.remainingSeconds > 0) {
-                    repository.updateOrderRemainingSeconds(
-                        active.orderId,
-                        active.remainingSeconds - 1
+                    repository.updateOrderRemainingSeconds(active.orderId, nextRemaining)
+                }
+                val isFirstNotificationForOrder = lastNotifiedOrderId != active.orderId
+                val shouldRefreshNotification = isFirstNotificationForOrder || (nextRemaining % 10 == 0)
+                if (snapshot.preferences.notificationsEnabled && shouldRefreshNotification) {
+                    lastNotifiedOrderId = active.orderId
+                    NotificationHelper.sendOrderStageNotification(
+                        context = getApplication(),
+                        orderId = active.orderId,
+                        stage = active.stage,
+                        etaMinutes = active.etaMinutes,
+                        remainingSeconds = nextRemaining,
+                        totalEtaMinutes = active.etaMinutes,
+                        deliveryWindowLabel = active.deliveryWindowLabel,
+                        silentUpdate = true
                     )
                 }
             }
@@ -318,6 +363,10 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun toggleNotifications(enabled: Boolean) {
         viewModelScope.launch { repository.setNotificationsEnabled(enabled) }
+    }
+
+    fun setScreenZoomPercent(percent: Int) {
+        viewModelScope.launch { repository.setScreenZoomPercent(percent) }
     }
 
     fun selectNeighborhood(neighborhoodId: String) {
@@ -346,6 +395,14 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         selectedCategoryFlow.value = category
     }
 
+    fun toggleFavoritesFilter() {
+        favoritesOnlyFlow.update { !it }
+    }
+
+    fun setFavoritesOnly(enabled: Boolean) {
+        favoritesOnlyFlow.value = enabled
+    }
+
     fun updateSearchQuery(query: String) {
         searchQueryFlow.value = query
     }
@@ -356,6 +413,18 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun toggleFavorite(productId: String) {
         viewModelScope.launch { repository.toggleFavorite(productId) }
+    }
+
+    fun quickAddAllFavorites(onComplete: (Int) -> Unit = {}) {
+        val favs = uiState.value.favoriteProducts
+        if (favs.isEmpty()) {
+            onComplete(0)
+            return
+        }
+        viewModelScope.launch {
+            repository.quickAddProducts(favs)
+            onComplete(favs.size)
+        }
     }
 
     fun incrementCart(productId: String, variantId: String) {
@@ -482,6 +551,10 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         checkoutDraftFlow.update { it.copy(paymentMethod = method) }
     }
 
+    fun selectDeliverySlot(slot: DeliverySlot) {
+        checkoutDraftFlow.update { it.copy(selectedDeliverySlot = slot) }
+    }
+
     fun placeOrder(onOrderCreated: (OrderRecord) -> Unit) {
         val snapshot = uiState.value
         if (snapshot.cartItems.isEmpty()) return
@@ -491,14 +564,21 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
             val address = snapshot.selectedAddress ?: snapshot.savedAddresses.firstOrNull()
             val draft = snapshot.checkoutDraft
             val bill = snapshot.billBreakdown
+            val slot = draft.selectedDeliverySlot
+            val etaMinutes = if (slot.isExpress) neighborhood.etaMinutes else slot.etaMinutes
+            val windowLabel = if (slot.isExpress) {
+                "Express • ${neighborhood.etaMinutes} mins"
+            } else {
+                slot.displaySummary
+            }
 
             val orderId = "QK-${Random.nextInt(85000, 99999)}"
             val newOrder = OrderRecord(
                 orderId = orderId,
                 createdAtMillis = System.currentTimeMillis(),
                 neighborhoodName = neighborhood.displayTitle,
-                etaMinutes = neighborhood.etaMinutes,
-                remainingSeconds = neighborhood.etaMinutes * 60,
+                etaMinutes = etaMinutes,
+                remainingSeconds = etaMinutes * 60,
                 stage = OrderStage.CONFIRMED,
                 items = snapshot.cartItems.map { cartItem ->
                     OrderLineItem(
@@ -526,20 +606,26 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
                 handlingCharge = bill.handlingCharge,
                 promoDiscount = bill.promoDiscount,
                 tipAmount = bill.tipAmount,
-                totalPaid = bill.grandTotal
+                totalPaid = bill.grandTotal,
+                deliveryWindowLabel = windowLabel
             )
 
             repository.saveOrder(newOrder)
             repository.clearCart()
             lastActiveOrderIdFlow.value = orderId
+            lastNotifiedOrderId = orderId
             checkoutDraftFlow.value = CheckoutDraft()
 
             if (snapshot.preferences.notificationsEnabled) {
                 NotificationHelper.sendOrderStageNotification(
-                    getApplication(),
-                    newOrder.orderId,
-                    OrderStage.CONFIRMED,
-                    newOrder.etaMinutes
+                    context = getApplication(),
+                    orderId = newOrder.orderId,
+                    stage = OrderStage.CONFIRMED,
+                    etaMinutes = newOrder.etaMinutes,
+                    remainingSeconds = newOrder.remainingSeconds,
+                    totalEtaMinutes = newOrder.etaMinutes,
+                    deliveryWindowLabel = newOrder.deliveryWindowLabel,
+                    silentUpdate = false
                 )
             }
             onOrderCreated(newOrder)
@@ -556,13 +642,18 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         }
         viewModelScope.launch {
             lastActiveOrderIdFlow.value = order.orderId
+            lastNotifiedOrderId = order.orderId
             repository.updateOrderStage(order.orderId, next, newEtaSeconds)
             if (uiState.value.preferences.notificationsEnabled) {
                 NotificationHelper.sendOrderStageNotification(
-                    getApplication(),
-                    order.orderId,
-                    next,
-                    (newEtaSeconds / 60).coerceAtLeast(1)
+                    context = getApplication(),
+                    orderId = order.orderId,
+                    stage = next,
+                    etaMinutes = (newEtaSeconds / 60).coerceAtLeast(1),
+                    remainingSeconds = newEtaSeconds,
+                    totalEtaMinutes = order.etaMinutes,
+                    deliveryWindowLabel = order.deliveryWindowLabel,
+                    silentUpdate = false
                 )
             }
         }
@@ -572,13 +663,26 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
         val prev = order.stage.previous() ?: return
         val newEtaSeconds = when (prev) {
             OrderStage.CONFIRMED -> order.etaMinutes * 60
-            OrderStage.PACKING -> 360
+            OrderStage.PACKING -> (order.etaMinutes * 45).coerceAtLeast(180)
             OrderStage.OUT_FOR_DELIVERY -> 180
             OrderStage.DELIVERED -> 0
         }
         viewModelScope.launch {
             lastActiveOrderIdFlow.value = order.orderId
+            lastNotifiedOrderId = order.orderId
             repository.updateOrderStage(order.orderId, prev, newEtaSeconds)
+            if (uiState.value.preferences.notificationsEnabled) {
+                NotificationHelper.sendOrderStageNotification(
+                    context = getApplication(),
+                    orderId = order.orderId,
+                    stage = prev,
+                    etaMinutes = (newEtaSeconds / 60).coerceAtLeast(1),
+                    remainingSeconds = newEtaSeconds,
+                    totalEtaMinutes = order.etaMinutes,
+                    deliveryWindowLabel = order.deliveryWindowLabel,
+                    silentUpdate = true
+                )
+            }
         }
     }
 
@@ -627,5 +731,51 @@ class QuickKartViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun selectHistoryTimeFilter(filter: OrderHistoryTimeFilter) {
         historyTimeFilterFlow.value = filter
+    }
+
+    fun createSupportTicket(
+        order: OrderRecord,
+        category: SupportIssueCategory,
+        selectedItemKeys: Set<String>,
+        preferredResolution: SupportResolutionOption,
+        userNote: String,
+        photoUriString: String?,
+        onCreated: (SupportTicketRecord) -> Unit
+    ) {
+        viewModelScope.launch {
+            val ticket = repository.createSupportTicket(
+                order = order,
+                category = category,
+                selectedItemKeys = selectedItemKeys,
+                preferredResolution = preferredResolution,
+                userNote = userNote,
+                photoUriString = photoUriString
+            )
+            onCreated(ticket)
+        }
+    }
+
+    fun sendSupportMessage(ticketId: String, message: String) {
+        viewModelScope.launch {
+            repository.sendSupportMessage(ticketId, message)
+        }
+    }
+
+    fun resolveSupportTicket(ticketId: String, resolutionSummary: String? = null) {
+        viewModelScope.launch {
+            repository.resolveSupportTicket(ticketId, resolutionSummary)
+        }
+    }
+
+    fun reopenSupportTicket(ticketId: String) {
+        viewModelScope.launch {
+            repository.reopenSupportTicket(ticketId)
+        }
+    }
+
+    fun submitSupportCsat(ticketId: String, rating: Int) {
+        viewModelScope.launch {
+            repository.submitSupportCsat(ticketId, rating)
+        }
     }
 }

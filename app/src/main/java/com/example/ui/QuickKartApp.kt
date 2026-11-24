@@ -72,6 +72,7 @@ import com.example.ui.screens.CartCheckoutScreen
 import com.example.ui.screens.LiveTrackingScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.StorefrontScreen
+import com.example.ui.screens.SupportScreen
 import androidx.compose.runtime.CompositionLocalProvider
 import com.example.data.model.OrderRecord
 import com.example.ui.components.OrderPlacedCelebrationOverlay
@@ -83,6 +84,8 @@ import com.example.ui.theme.QuickKartThemeTokens
 import com.example.ui.theme.metricsForWidth
 import kotlinx.coroutines.launch
 
+const val ROUTE_SUPPORT = "support"
+
 @Composable
 fun QuickKartApp(
     viewModel: QuickKartViewModel,
@@ -90,7 +93,10 @@ fun QuickKartApp(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    QuickKartTheme(darkTheme = uiState.preferences.isDarkTheme) {
+    QuickKartTheme(
+        darkTheme = uiState.preferences.isDarkTheme,
+        screenZoomPercent = uiState.preferences.screenZoomPercent
+    ) {
         val tokens = QuickKartThemeTokens.colors
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
@@ -115,7 +121,10 @@ fun QuickKartApp(
                 .fillMaxSize()
                 .background(tokens.background)
         ) {
-            val metrics = metricsForWidth(maxWidth)
+            val metrics = metricsForWidth(
+                maxWidth = maxWidth,
+                screenZoomPercent = uiState.preferences.screenZoomPercent
+            )
             CompositionLocalProvider(LocalQuickKartMetrics provides metrics) {
                 if (!uiState.isReady) {
                     Box(
@@ -159,6 +168,8 @@ fun QuickKartApp(
         val navController = rememberNavController()
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route ?: BottomTab.HOME.route
+        var supportPreselectedOrderId by rememberSaveable { mutableStateOf<String?>(null) }
+        var openWizardOnSupport by rememberSaveable { mutableStateOf(false) }
 
         var handledInitialNav by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(initialDestination, uiState.isReady) {
@@ -191,7 +202,17 @@ fun QuickKartApp(
             }
         }
 
-        if (currentRoute != BottomTab.HOME.route) {
+        fun openSupport(orderId: String? = null, openWizardDirectly: Boolean = false) {
+            supportPreselectedOrderId = orderId
+            openWizardOnSupport = openWizardDirectly
+            if (currentRoute != ROUTE_SUPPORT) {
+                navController.navigate(ROUTE_SUPPORT) {
+                    launchSingleTop = true
+                }
+            }
+        }
+
+        if (currentRoute != BottomTab.HOME.route && currentRoute != ROUTE_SUPPORT) {
             BackHandler {
                 navigateToTab(BottomTab.HOME)
             }
@@ -209,13 +230,14 @@ fun QuickKartApp(
         )
 
                 val useNavRail = metrics.useNavRail
+                val showTopLevelNav = currentRoute != ROUTE_SUPPORT
 
             Scaffold(
                 containerColor = tokens.background,
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                 bottomBar = {
-                    if (!useNavRail) {
+                    if (showTopLevelNav && !useNavRail) {
                         NavigationBar(
                             containerColor = tokens.surface,
                             tonalElevation = 4.dp
@@ -262,7 +284,7 @@ fun QuickKartApp(
                         .padding(innerPadding)
                         .statusBarsPadding()
                 ) {
-                    if (useNavRail) {
+                    if (showTopLevelNav && useNavRail) {
                         NavigationRail(
                             containerColor = tokens.surface,
                             header = {
@@ -312,6 +334,19 @@ fun QuickKartApp(
                                 uiState = uiState,
                                 onSelectNeighborhood = viewModel::selectNeighborhood,
                                 onSelectCategory = viewModel::selectCategory,
+                                onToggleFavoritesFilter = viewModel::toggleFavoritesFilter,
+                                onSetFavoritesOnly = viewModel::setFavoritesOnly,
+                                onQuickAddAllFavorites = {
+                                    viewModel.quickAddAllFavorites { count ->
+                                        if (count > 0) {
+                                            showToast(
+                                                message = "Quick-added $count favorite items to Cart",
+                                                actionLabel = "View Cart",
+                                                onAction = { navigateToTab(BottomTab.CART) }
+                                            )
+                                        }
+                                    }
+                                },
                                 onSearchQueryChange = viewModel::updateSearchQuery,
                                 onVoiceListeningChange = viewModel::setVoiceListening,
                                 onToggleFavorite = viewModel::toggleFavorite,
@@ -339,6 +374,7 @@ fun QuickKartApp(
                                 onToggleInstruction = viewModel::toggleDeliveryInstruction,
                                 onRiderNoteChange = viewModel::updateRiderNote,
                                 onSelectPaymentMethod = viewModel::selectPaymentMethod,
+                                onSelectDeliverySlot = viewModel::selectDeliverySlot,
                                 onPlaceOrder = {
                                     viewModel.placeOrder { order ->
                                         celebratingOrder = order
@@ -358,6 +394,9 @@ fun QuickKartApp(
                                 onRevertStage = viewModel::revertOrderStage,
                                 onToggleAutoSim = viewModel::toggleAutoSimulate,
                                 onSubmitRating = viewModel::submitRating,
+                                onOpenSupport = { targetOrder ->
+                                    openSupport(orderId = targetOrder.orderId, openWizardDirectly = true)
+                                },
                                 onBrowseStorefront = { navigateToTab(BottomTab.HOME) },
                                 onShowMessage = { msg -> showToast(msg) }
                             )
@@ -389,12 +428,38 @@ fun QuickKartApp(
                                         navigateToTab(BottomTab.CART)
                                     }
                                 },
+                                onSubmitRating = viewModel::submitRating,
                                 onToggleTheme = viewModel::toggleDarkTheme,
                                 onToggleNotifications = viewModel::toggleNotifications,
+                                onScreenZoomChange = viewModel::setScreenZoomPercent,
                                 onSetDefaultAddress = viewModel::setDefaultAddress,
                                 onDeleteAddress = viewModel::deleteAddress,
                                 onAddAddress = viewModel::addAddress,
+                                onOpenSupportHub = {
+                                    openSupport(orderId = null, openWizardDirectly = false)
+                                },
+                                onOpenSupportForOrder = { targetOrder ->
+                                    openSupport(orderId = targetOrder.orderId, openWizardDirectly = true)
+                                },
                                 onSignOut = viewModel::signOut,
+                                onShowMessage = { msg -> showToast(msg) }
+                            )
+                        }
+
+                        composable(ROUTE_SUPPORT) {
+                            SupportScreen(
+                                orders = uiState.orders,
+                                tickets = uiState.supportTickets,
+                                initialOrderId = supportPreselectedOrderId,
+                                openWizardInitially = openWizardOnSupport,
+                                onCreateTicket = viewModel::createSupportTicket,
+                                onSendReply = viewModel::sendSupportMessage,
+                                onResolveTicket = viewModel::resolveSupportTicket,
+                                onReopenTicket = viewModel::reopenSupportTicket,
+                                onSubmitCsat = viewModel::submitSupportCsat,
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                },
                                 onShowMessage = { msg -> showToast(msg) }
                             )
                         }

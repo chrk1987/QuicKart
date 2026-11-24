@@ -62,7 +62,8 @@ data class ReceiptDocumentData(
     val userRating: Int?,
     val praiseTags: List<String>,
     val feedbackComment: String,
-    val etaMinutes: Int
+    val etaMinutes: Int,
+    val deliveryWindowLabel: String
 )
 
 data class GeneratedReceiptResult(
@@ -226,6 +227,8 @@ class PdfReceiptService(
             cursorY += 16f
             canvas.drawText("Status: ${data.stageTitle}", left, cursorY, textPaint)
             canvas.drawText("Paid via: ${data.pricing.paymentMethodLabel}", right - 210f, cursorY, textPaint)
+            cursorY += 16f
+            canvas.drawText("Window: ${data.deliveryWindowLabel}", left, cursorY, textPaint)
             cursorY += 16f
             canvas.drawText("Courier: ${data.riderName} (${data.riderPhone})", left, cursorY, textPaint)
             cursorY += 18f
@@ -446,7 +449,8 @@ class PdfReceiptService(
                 userRating = order.userRating,
                 praiseTags = order.praiseTags,
                 feedbackComment = order.feedbackComment,
-                etaMinutes = order.etaMinutes
+                etaMinutes = order.etaMinutes,
+                deliveryWindowLabel = order.deliveryWindowLabel
             )
         }
 

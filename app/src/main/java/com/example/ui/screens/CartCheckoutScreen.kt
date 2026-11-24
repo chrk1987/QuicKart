@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -74,6 +75,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.local.SeedData
+import com.example.data.model.DeliverySlot
 import com.example.data.model.PaymentMethod
 import com.example.data.model.SavedAddress
 import com.example.ui.QuickKartUiState
@@ -101,6 +103,7 @@ fun CartCheckoutScreen(
     onToggleInstruction: (String) -> Unit,
     onRiderNoteChange: (String) -> Unit,
     onSelectPaymentMethod: (PaymentMethod) -> Unit,
+    onSelectDeliverySlot: (DeliverySlot) -> Unit,
     onPlaceOrder: () -> Unit,
     onBrowseStorefront: () -> Unit
 ) {
@@ -201,7 +204,11 @@ fun CartCheckoutScreen(
                             color = tokens.ink
                         )
                         Text(
-                            text = "${uiState.totalCartCount} items • ${uiState.selectedNeighborhood?.etaMinutes ?: 8}-min express delivery",
+                            text = if (draft.selectedDeliverySlot.isExpress) {
+                                "${uiState.totalCartCount} items • ${uiState.selectedNeighborhood?.etaMinutes ?: 8}-min express delivery"
+                            } else {
+                                "${uiState.totalCartCount} items • Scheduled: ${draft.selectedDeliverySlot.displaySummary}"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = tokens.deliveryGreenDeep
                         )
@@ -364,6 +371,15 @@ fun CartCheckoutScreen(
                             }
                         }
                     }
+                }
+
+                // Schedule Delivery Window & Time-Slot Picker
+                item {
+                    DeliveryWindowPickerCard(
+                        selectedSlot = draft.selectedDeliverySlot,
+                        expressEtaMinutes = uiState.selectedNeighborhood?.etaMinutes ?: 8,
+                        onSelectSlot = onSelectDeliverySlot
+                    )
                 }
 
                 // Cart Items List
@@ -914,5 +930,187 @@ private fun BillRow(label: String, value: String, isGreen: Boolean = false) {
             fontWeight = if (isGreen) FontWeight.Bold else FontWeight.SemiBold,
             color = if (isGreen) tokens.deliveryGreenDeep else tokens.ink
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DeliveryWindowPickerCard(
+    selectedSlot: DeliverySlot,
+    expressEtaMinutes: Int,
+    onSelectSlot: (DeliverySlot) -> Unit
+) {
+    val tokens = QuickKartThemeTokens.colors
+    val metrics = QuickKartMetricsTokens.metrics
+    val dayTabs = remember { listOf("Now", "Today", "Tomorrow") }
+    var activeDay by remember(selectedSlot.id) { mutableStateOf(selectedSlot.dayLabel) }
+    val slotsForDay = remember(activeDay) {
+        SeedData.deliverySlots.filter { it.dayLabel == activeDay }
+    }
+
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = tokens.surface),
+        border = BorderStroke(1.dp, tokens.border),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("delivery_window_picker_card")
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Schedule,
+                        contentDescription = null,
+                        tint = tokens.deliveryGreenDeep,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Delivery Window",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = tokens.ink
+                    )
+                }
+                Surface(
+                    color = tokens.deliveryGreenSoft,
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        text = if (selectedSlot.isExpress) {
+                            "⚡ $expressEtaMinutes-Min Express"
+                        } else {
+                            selectedSlot.displaySummary
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tokens.deliveryGreenDeep,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            // Day Tabs (Now / Today / Tomorrow)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                dayTabs.forEach { day ->
+                    val isDaySelected = activeDay == day
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = if (isDaySelected) tokens.ink else tokens.surfaceElevated,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isDaySelected) tokens.ink else tokens.border
+                        ),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable {
+                                activeDay = day
+                                val firstForDay = SeedData.deliverySlots.firstOrNull { it.dayLabel == day }
+                                if (firstForDay != null && selectedSlot.dayLabel != day) {
+                                    onSelectSlot(firstForDay)
+                                }
+                            }
+                            .testTag("slot_day_${day.lowercase()}")
+                    ) {
+                        Text(
+                            text = when (day) {
+                                "Now" -> "⚡ Instant ($expressEtaMinutes min)"
+                                else -> day
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isDaySelected) tokens.background else tokens.ink,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        )
+                    }
+                }
+            }
+
+            // Time-Slot Options for Selected Day
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                slotsForDay.forEach { slot ->
+                    val isSelected = slot.id == selectedSlot.id
+                    val displayWindow = if (slot.isExpress) {
+                        "Arrives in ~$expressEtaMinutes mins"
+                    } else {
+                        slot.windowText
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) tokens.brandYellowSoft else tokens.surfaceElevated,
+                        border = BorderStroke(
+                            width = if (isSelected) 1.5.dp else 1.dp,
+                            color = if (isSelected) tokens.brandYellow else tokens.border
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { onSelectSlot(slot) }
+                            .testTag("delivery_slot_${slot.id}")
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = slot.title,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = tokens.ink,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    slot.badge?.let { badge ->
+                                        Surface(
+                                            color = if (slot.isExpress) tokens.deliveryGreenDeep else tokens.brandYellow,
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = badge,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (slot.isExpress) Color.White else tokens.onBrandYellow,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = displayWindow,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = tokens.muted
+                                )
+                            }
+
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { onSelectSlot(slot) },
+                                colors = RadioButtonDefaults.colors(selectedColor = tokens.ink)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

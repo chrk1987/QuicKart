@@ -59,6 +59,7 @@ import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -99,8 +100,10 @@ import com.example.data.model.OrderStage
 import com.example.service.PdfReceiptService
 import com.example.ui.components.InteractiveDeliveryRouteMap
 import com.example.ui.components.LiveOrderSummarySheetTriggerBar
+import com.example.ui.components.OrderFeedbackBottomSheet
 import com.example.ui.components.OrderSummaryBottomSheet
 import com.example.ui.components.QuickKartLogo
+import com.example.ui.components.feedbackSentimentLabel
 import com.example.ui.theme.AmberGold
 import com.example.ui.theme.DeviceSizeClass
 import com.example.ui.theme.JetBrainsMonoFontFamily
@@ -120,6 +123,7 @@ fun LiveTrackingScreen(
     onRevertStage: (OrderRecord) -> Unit,
     onToggleAutoSim: (OrderRecord) -> Unit,
     onSubmitRating: (String, Int, List<String>, String) -> Unit,
+    onOpenSupport: (OrderRecord) -> Unit,
     onBrowseStorefront: () -> Unit,
     onShowMessage: (String) -> Unit
 ) {
@@ -191,6 +195,7 @@ fun LiveTrackingScreen(
     val seconds = order.remainingSeconds % 60
     val formattedEta = String.format(Locale.US, "%02d:%02d", minutes, seconds)
     var showOrderSummarySheet by remember(order.orderId) { mutableStateOf(false) }
+    var showFeedbackSheet by remember(order.orderId) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val receiptService = remember(context) { PdfReceiptService(context) }
 
@@ -298,6 +303,17 @@ fun LiveTrackingScreen(
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                     )
                                 }
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.18f),
+                                    shape = RoundedCornerShape(50)
+                                ) {
+                                    Text(
+                                        text = order.deliveryWindowLabel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
                             }
                             AnimatedContent(
                                 targetState = order.stage,
@@ -341,7 +357,7 @@ fun LiveTrackingScreen(
                                     text = if (order.stage == OrderStage.DELIVERED) "00:00" else formattedEta,
                                     fontFamily = JetBrainsMonoFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = if (metrics.isNarrowPhone) 22.sp else 26.sp,
+                                    fontSize = ((if (metrics.isNarrowPhone) 22f else 26f) * metrics.zoomScale).sp,
                                     color = Color.White,
                                     modifier = Modifier.testTag("live_eta_countdown")
                                 )
@@ -510,7 +526,7 @@ fun LiveTrackingScreen(
                                 color = tokens.ink
                             )
                             Text(
-                                text = "Triggers real notifications",
+                                text = "Updates live lock-screen progress",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = tokens.muted
                             )
@@ -704,6 +720,29 @@ fun LiveTrackingScreen(
                                 )
                             }
                         }
+
+                        OutlinedButton(
+                            onClick = { onOpenSupport(order) },
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, tokens.border),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .defaultMinSize(minHeight = 48.dp)
+                                .testTag("tracking_help_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.SupportAgent,
+                                contentDescription = null,
+                                tint = tokens.ink,
+                                modifier = Modifier.size(metrics.iconMedium)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "Need Help with This Order?",
+                                color = tokens.ink,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -727,6 +766,29 @@ fun LiveTrackingScreen(
                 { saveAndOpenReceipt() }
             } else {
                 null
+            },
+            onRateOrder = if (order.stage == OrderStage.DELIVERED) {
+                {
+                    showOrderSummarySheet = false
+                    showFeedbackSheet = true
+                }
+            } else {
+                null
+            },
+            onNeedHelp = {
+                showOrderSummarySheet = false
+                onOpenSupport(order)
+            }
+        )
+    }
+
+    if (showFeedbackSheet) {
+        OrderFeedbackBottomSheet(
+            order = order,
+            onDismiss = { showFeedbackSheet = false },
+            onSubmit = { stars, tags, comment ->
+                onSubmitRating(order.orderId, stars, tags, comment)
+                onShowMessage("Thank you for your order feedback!")
             }
         )
     }
@@ -876,10 +938,20 @@ private fun PostDeliveryRatingCard(
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
-    var selectedStars by remember(order.orderId) { mutableIntStateOf(order.userRating ?: 5) }
-    var selectedTags by remember(order.orderId) { mutableStateOf(order.praiseTags.toSet()) }
-    var comment by remember(order.orderId) { mutableStateOf(order.feedbackComment) }
-    val alreadySubmitted = order.userRating != null
+    var selectedStars by remember(order.orderId, order.userRating) {
+        mutableIntStateOf(order.userRating ?: 5)
+    }
+    var selectedTags by remember(order.orderId, order.praiseTags) {
+        mutableStateOf(order.praiseTags.toSet())
+    }
+    var comment by remember(order.orderId, order.feedbackComment) {
+        mutableStateOf(order.feedbackComment)
+    }
+    var isEditing by remember(order.orderId, order.userRating) {
+        mutableStateOf(order.userRating == null)
+    }
+    val alreadySubmitted = order.userRating != null && !isEditing
+    val availableTags = if (selectedStars >= 4) SeedData.praiseTags else SeedData.issueTags
 
     Card(
         shape = RoundedCornerShape(18.dp),
@@ -909,26 +981,59 @@ private fun PostDeliveryRatingCard(
                     color = tokens.ink,
                     modifier = Modifier.weight(1f)
                 )
+                if (alreadySubmitted) {
+                    TextButton(
+                        onClick = { isEditing = true },
+                        modifier = Modifier.testTag("edit_rating_button")
+                    ) {
+                        Text("Edit", fontWeight = FontWeight.Bold)
+                    }
+                }
             }
 
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                (1..5).forEach { star ->
-                    IconButton(
-                        onClick = { if (!alreadySubmitted) selectedStars = star },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .testTag("rating_star_$star")
-                    ) {
-                        Icon(
-                            imageVector = if (star <= selectedStars) Icons.Rounded.Star else Icons.Rounded.StarOutline,
-                            contentDescription = "$star stars",
-                            tint = if (star <= selectedStars) AmberGold else tokens.muted,
-                            modifier = Modifier.size(metrics.iconHero)
-                        )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    (1..5).forEach { star ->
+                        IconButton(
+                            onClick = {
+                                if (!alreadySubmitted) {
+                                    selectedStars = star
+                                    val valid = if (star >= 4) SeedData.praiseTags else SeedData.issueTags
+                                    selectedTags = selectedTags.intersect(valid.toSet())
+                                }
+                            },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .testTag("rating_star_$star")
+                        ) {
+                            Icon(
+                                imageVector = if (star <= selectedStars) Icons.Rounded.Star else Icons.Rounded.StarOutline,
+                                contentDescription = "$star stars",
+                                tint = if (star <= selectedStars) AmberGold else tokens.muted,
+                                modifier = Modifier.size(metrics.iconHero)
+                            )
+                        }
                     }
+                }
+
+                Surface(
+                    color = if (selectedStars >= 4) tokens.deliveryGreenSoft else tokens.brandYellowSoft,
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        text = "$selectedStars / 5 • ${feedbackSentimentLabel(selectedStars)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selectedStars >= 4) tokens.deliveryGreenDeep else tokens.ink,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
                 }
             }
 
@@ -936,7 +1041,7 @@ private fun PostDeliveryRatingCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                SeedData.praiseTags.forEach { tag ->
+                availableTags.forEach { tag ->
                     val active = tag in selectedTags
                     Surface(
                         shape = RoundedCornerShape(50),
@@ -975,7 +1080,10 @@ private fun PostDeliveryRatingCard(
 
             if (!alreadySubmitted) {
                 Button(
-                    onClick = { onSubmit(selectedStars, selectedTags.toList(), comment) },
+                    onClick = {
+                        onSubmit(selectedStars, selectedTags.toList(), comment)
+                        isEditing = false
+                    },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tokens.deliveryGreenDeep,
@@ -986,7 +1094,10 @@ private fun PostDeliveryRatingCard(
                         .height(48.dp)
                         .testTag("submit_rating_button")
                 ) {
-                    Text("Submit Rating", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = if (order.userRating != null) "Update Feedback" else "Submit Rating",
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
             }
         }

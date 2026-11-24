@@ -51,6 +51,10 @@ import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -59,6 +63,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -81,6 +86,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -92,6 +98,7 @@ import com.example.ui.QuickKartUiState
 import com.example.ui.components.ProductArtwork
 import com.example.ui.components.ProductDetailBottomSheet
 import com.example.ui.components.QuickKartLogo
+import com.example.ui.components.SavedFavoritesBottomSheet
 import com.example.ui.theme.QuickKartMetricsTokens
 import com.example.ui.theme.QuickKartThemeTokens
 import com.example.util.VoiceSearchHelper
@@ -101,6 +108,9 @@ fun StorefrontScreen(
     uiState: QuickKartUiState,
     onSelectNeighborhood: (String) -> Unit,
     onSelectCategory: (ProductCategory) -> Unit,
+    onToggleFavoritesFilter: () -> Unit,
+    onSetFavoritesOnly: (Boolean) -> Unit,
+    onQuickAddAllFavorites: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onVoiceListeningChange: (Boolean) -> Unit,
     onToggleFavorite: (String) -> Unit,
@@ -115,6 +125,7 @@ fun StorefrontScreen(
     var showNeighborhoodMenu by remember { mutableStateOf(false) }
     var searchFocused by remember { mutableStateOf(false) }
     var activeDetailProduct by remember { mutableStateOf<Product?>(null) }
+    var showWishlistSheet by remember { mutableStateOf(false) }
     val selectedVariantByProduct = remember { mutableStateMapOf<String, String>() }
 
     val voiceHelper = remember(context) {
@@ -254,28 +265,64 @@ fun StorefrontScreen(
                             }
                         }
 
-                        Surface(
-                            color = tokens.brandYellowSoft,
-                            shape = RoundedCornerShape(50),
-                            border = BorderStroke(1.dp, tokens.brandYellow.copy(alpha = 0.5f))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            IconButton(
+                                onClick = { showWishlistSheet = true },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag("open_wishlist_button")
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Timer,
-                                    contentDescription = null,
-                                    tint = tokens.ink,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = "${activeNeighborhood?.etaMinutes ?: 8} MIN",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = tokens.ink,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
+                                BadgedBox(
+                                    badge = {
+                                        if (uiState.favoriteIds.isNotEmpty()) {
+                                            Badge(
+                                                containerColor = tokens.alertRed,
+                                                contentColor = Color.White
+                                            ) {
+                                                Text(uiState.favoriteIds.size.toString())
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (uiState.favoriteIds.isNotEmpty()) {
+                                            Icons.Rounded.Favorite
+                                        } else {
+                                            Icons.Rounded.FavoriteBorder
+                                        },
+                                        contentDescription = "Open Saved Favorites Wishlist",
+                                        tint = if (uiState.favoriteIds.isNotEmpty()) tokens.alertRed else tokens.ink,
+                                        modifier = Modifier.size(metrics.iconMedium)
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                color = tokens.brandYellowSoft,
+                                shape = RoundedCornerShape(50),
+                                border = BorderStroke(1.dp, tokens.brandYellow.copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Timer,
+                                        contentDescription = null,
+                                        tint = tokens.ink,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "${activeNeighborhood?.etaMinutes ?: 8} MIN",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = tokens.ink,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
                             }
                         }
                     }
@@ -557,11 +604,50 @@ fun StorefrontScreen(
                         }
                     }
 
-                    // Category Filter Chips
+                    // Category & Saved Favorites Quick-Filter Chips
                     item(span = { GridItemSpan(columns) }) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            item(key = "favorites_filter") {
+                                val favSelected = uiState.favoritesOnly
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = if (favSelected) tokens.alertRed else tokens.surface,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (favSelected) tokens.alertRed else tokens.border
+                                    ),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .clickable(onClick = onToggleFavoritesFilter)
+                                        .testTag("favorites_filter_chip")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (favSelected || uiState.favoriteIds.isNotEmpty()) {
+                                                Icons.Rounded.Favorite
+                                            } else {
+                                                Icons.Rounded.FavoriteBorder
+                                            },
+                                            contentDescription = null,
+                                            tint = if (favSelected) Color.White else tokens.alertRed,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Text(
+                                            text = "Favorites (${uiState.favoriteIds.size})",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (favSelected) Color.White else tokens.ink,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+
                             items(ProductCategory.entries) { category ->
                                 val selected = category == uiState.selectedCategory
                                 Surface(
@@ -582,6 +668,64 @@ fun StorefrontScreen(
                                         color = if (selected) tokens.background else tokens.ink,
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
                                     )
+                                }
+                            }
+                        }
+                    }
+
+                    // Quick-Add All Favorites Banner when Favorites filter is active
+                    if (uiState.favoritesOnly) {
+                        item(span = { GridItemSpan(columns) }) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = tokens.brandYellowSoft,
+                                border = BorderStroke(1.dp, tokens.brandYellow),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Saved Favorites Filter Active",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = tokens.ink,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = if (uiState.favoriteProducts.isEmpty()) {
+                                                "No items saved yet — tap hearts to add"
+                                            } else {
+                                                "${uiState.favoriteProducts.size} saved staples ready for 1-tap add"
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = tokens.muted
+                                        )
+                                    }
+                                    if (uiState.favoriteProducts.isNotEmpty()) {
+                                        Button(
+                                            onClick = onQuickAddAllFavorites,
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = tokens.deliveryGreenDeep,
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier.testTag("storefront_quick_add_favorites_button")
+                                        ) {
+                                            Text("Quick-Add All", style = MaterialTheme.typography.labelMedium)
+                                        }
+                                    }
+                                    OutlinedButton(
+                                        onClick = { showWishlistSheet = true },
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.testTag("storefront_open_wishlist_chip")
+                                    ) {
+                                        Text("Wishlist", style = MaterialTheme.typography.labelMedium)
+                                    }
                                 }
                             }
                         }
@@ -685,7 +829,11 @@ fun StorefrontScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = uiState.selectedCategory.label,
+                                text = if (uiState.favoritesOnly) {
+                                    "Saved Favorites • ${uiState.selectedCategory.shortLabel}"
+                                } else {
+                                    uiState.selectedCategory.label
+                                },
                                 style = MaterialTheme.typography.titleMedium,
                                 color = tokens.ink
                             )
@@ -697,35 +845,96 @@ fun StorefrontScreen(
                         }
                     }
 
-                    // 2-Column Product Grid
-                    items(uiState.filteredProducts, key = { it.id }) { product ->
-                        val activeVariantId = selectedVariantByProduct[product.id] ?: product.defaultVariant.id
-                        val activeVariant = product.variants.find { it.id == activeVariantId }
-                            ?: product.defaultVariant
-                        val qtyInCart = uiState.cartItems.find {
-                            it.product.id == product.id && it.variant.id == activeVariant.id
-                        }?.quantity ?: 0
-                        val isFavorite = product.id in uiState.favoriteIds
-
-                        ProductGridCard(
-                            product = product,
-                            selectedVariantId = activeVariant.id,
-                            qtyInCart = qtyInCart,
-                            isFavorite = isFavorite,
-                            onCardClick = { activeDetailProduct = product },
-                            onCycleVariant = {
-                                if (product.variants.size > 1) {
-                                    val idx = product.variants.indexOfFirst { it.id == activeVariant.id }
-                                    val next = product.variants[(idx + 1) % product.variants.size]
-                                    selectedVariantByProduct[product.id] = next.id
-                                } else {
-                                    activeDetailProduct = product
+                    if (uiState.filteredProducts.isEmpty()) {
+                        item(span = { GridItemSpan(columns) }) {
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = tokens.surface),
+                                border = BorderStroke(1.dp, tokens.border),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (uiState.favoritesOnly) Icons.Rounded.FavoriteBorder else Icons.Rounded.Search,
+                                        contentDescription = null,
+                                        tint = tokens.muted,
+                                        modifier = Modifier.size(metrics.iconHero)
+                                    )
+                                    Text(
+                                        text = if (uiState.favoritesOnly) {
+                                            "No saved favorites match"
+                                        } else {
+                                            "No products match your filter"
+                                        },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = tokens.ink,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Text(
+                                        text = if (uiState.favoritesOnly) {
+                                            "Tap the heart icon on any product or reset filters to view all groceries."
+                                        } else {
+                                            "Try clearing your search or switching category filters."
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = tokens.muted,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Button(
+                                        onClick = {
+                                            onSetFavoritesOnly(false)
+                                            onSelectCategory(ProductCategory.ALL)
+                                            onSearchQueryChange("")
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = tokens.brandYellow,
+                                            contentColor = tokens.onBrandYellow
+                                        ),
+                                        modifier = Modifier.testTag("reset_storefront_filters_button")
+                                    ) {
+                                        Text("Show All Essentials", fontWeight = FontWeight.Bold)
+                                    }
                                 }
-                            },
-                            onToggleFavorite = { onToggleFavorite(product.id) },
-                            onIncrement = { onIncrementCart(product.id, activeVariant.id) },
-                            onDecrement = { onDecrementCart(product.id, activeVariant.id) }
-                        )
+                            }
+                        }
+                    } else {
+                        // 2-Column Product Grid
+                        items(uiState.filteredProducts, key = { it.id }) { product ->
+                            val activeVariantId = selectedVariantByProduct[product.id] ?: product.defaultVariant.id
+                            val activeVariant = product.variants.find { it.id == activeVariantId }
+                                ?: product.defaultVariant
+                            val qtyInCart = uiState.cartItems.find {
+                                it.product.id == product.id && it.variant.id == activeVariant.id
+                            }?.quantity ?: 0
+                            val isFavorite = product.id in uiState.favoriteIds
+
+                            ProductGridCard(
+                                product = product,
+                                selectedVariantId = activeVariant.id,
+                                qtyInCart = qtyInCart,
+                                isFavorite = isFavorite,
+                                onCardClick = { activeDetailProduct = product },
+                                onCycleVariant = {
+                                    if (product.variants.size > 1) {
+                                        val idx = product.variants.indexOfFirst { it.id == activeVariant.id }
+                                        val next = product.variants[(idx + 1) % product.variants.size]
+                                        selectedVariantByProduct[product.id] = next.id
+                                    } else {
+                                        activeDetailProduct = product
+                                    }
+                                },
+                                onToggleFavorite = { onToggleFavorite(product.id) },
+                                onIncrement = { onIncrementCart(product.id, activeVariant.id) },
+                                onDecrement = { onDecrementCart(product.id, activeVariant.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -818,6 +1027,26 @@ fun StorefrontScreen(
             onToggleFavorite = { onToggleFavorite(detailProduct.id) },
             onIncrementCart = onIncrementCart,
             onDecrementCart = onDecrementCart
+        )
+    }
+
+    if (showWishlistSheet) {
+        SavedFavoritesBottomSheet(
+            favoriteProducts = uiState.favoriteProducts,
+            cartItems = uiState.cartItems,
+            totalCartCount = uiState.totalCartCount,
+            onDismiss = { showWishlistSheet = false },
+            onToggleFavorite = onToggleFavorite,
+            onIncrementCart = onIncrementCart,
+            onDecrementCart = onDecrementCart,
+            onQuickAddAll = {
+                onQuickAddAllFavorites()
+            },
+            onOpenCart = onOpenCart,
+            onProductClick = { product ->
+                showWishlistSheet = false
+                activeDetailProduct = product
+            }
         )
     }
 }

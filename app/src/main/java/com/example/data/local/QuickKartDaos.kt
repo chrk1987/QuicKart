@@ -84,3 +84,22 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE orderId = :orderId LIMIT 1")
     suspend fun getOrderById(orderId: String): OrderEntity?
 }
+
+@Dao
+interface SupportTicketDao {
+    @Query("SELECT * FROM support_tickets ORDER BY updatedAtMillis DESC")
+    fun observeTickets(): Flow<List<SupportTicketEntity>>
+
+    @Query("SELECT COUNT(*) FROM support_tickets")
+    suspend fun count(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(tickets: List<SupportTicketEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertTicket(ticket: SupportTicketEntity)
+
+    @Query("SELECT * FROM support_tickets WHERE ticketId = :ticketId LIMIT 1")
+    suspend fun getTicketById(ticketId: String): SupportTicketEntity?
+}
+

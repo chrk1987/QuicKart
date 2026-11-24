@@ -36,6 +36,8 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.ShoppingBag
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,7 +78,9 @@ import java.util.Locale
 fun OrderSummaryBottomSheet(
     order: OrderRecord,
     onDismiss: () -> Unit,
-    onDownloadReceipt: (() -> Unit)? = null
+    onDownloadReceipt: (() -> Unit)? = null,
+    onRateOrder: (() -> Unit)? = null,
+    onNeedHelp: (() -> Unit)? = null
 ) {
     val tokens = QuickKartThemeTokens.colors
     val metrics = QuickKartMetricsTokens.metrics
@@ -258,7 +262,7 @@ fun OrderSummaryBottomSheet(
                                     text = if (order.stage == OrderStage.DELIVERED) "00:00" else formattedCountdown,
                                     fontFamily = JetBrainsMonoFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = if (metrics.isNarrowPhone) 18.sp else 20.sp,
+                                    fontSize = ((if (metrics.isNarrowPhone) 18f else 20f) * metrics.zoomScale).sp,
                                     color = Color.White,
                                     modifier = Modifier.testTag("order_summary_sheet_eta")
                                 )
@@ -317,6 +321,12 @@ fun OrderSummaryBottomSheet(
                             text = order.deliveryAddressFull,
                             style = MaterialTheme.typography.bodySmall,
                             color = tokens.muted
+                        )
+                        Text(
+                            text = "Window: ${order.deliveryWindowLabel}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = tokens.deliveryGreenDeep,
+                            fontWeight = FontWeight.SemiBold
                         )
                         if (order.deliveryInstructions.isNotEmpty() || order.riderNote.isNotBlank()) {
                             FlowRow(
@@ -486,6 +496,36 @@ fun OrderSummaryBottomSheet(
                 }
             }
 
+            if (order.stage == OrderStage.DELIVERED && onRateOrder != null) {
+                OutlinedButton(
+                    onClick = onRateOrder,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, tokens.brandYellow),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 48.dp)
+                        .testTag("sheet_rate_order_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFF59E0B),
+                        modifier = Modifier.size(metrics.iconMedium)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = if (order.userRating != null) {
+                            "Your Rating: ${order.userRating} ★ • Update Feedback"
+                        } else {
+                            "Rate & Review Delivery"
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        color = tokens.ink,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             if (order.stage == OrderStage.DELIVERED && onDownloadReceipt != null) {
                 OutlinedButton(
                     onClick = onDownloadReceipt,
@@ -507,6 +547,32 @@ fun OrderSummaryBottomSheet(
                         text = "Download PDF Receipt",
                         style = MaterialTheme.typography.labelLarge,
                         color = tokens.deliveryGreenDeep,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            if (onNeedHelp != null) {
+                OutlinedButton(
+                    onClick = onNeedHelp,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, tokens.border),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 48.dp)
+                        .testTag("sheet_help_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.SupportAgent,
+                        contentDescription = null,
+                        tint = tokens.ink,
+                        modifier = Modifier.size(metrics.iconMedium)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "Need Help / Report Issue",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = tokens.ink,
                         fontWeight = FontWeight.Bold
                     )
                 }

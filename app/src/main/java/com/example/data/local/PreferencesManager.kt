@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +18,7 @@ private val Context.quickKartDataStore: DataStore<Preferences> by preferencesDat
 data class UserPreferences(
     val isDarkTheme: Boolean = false,
     val notificationsEnabled: Boolean = true,
+    val screenZoomPercent: Int = 100,
     val isLoggedIn: Boolean = false,
     val isGuest: Boolean = false,
     val userPhone: String = "",
@@ -30,6 +32,7 @@ class PreferencesManager(private val context: Context) {
     private object Keys {
         val IS_DARK_THEME = booleanPreferencesKey("is_dark_theme")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val SCREEN_ZOOM_PERCENT = intPreferencesKey("screen_zoom_percent")
         val IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
         val IS_GUEST = booleanPreferencesKey("is_guest")
         val USER_PHONE = stringPreferencesKey("user_phone")
@@ -42,6 +45,7 @@ class PreferencesManager(private val context: Context) {
         UserPreferences(
             isDarkTheme = prefs[Keys.IS_DARK_THEME] ?: false,
             notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
+            screenZoomPercent = (prefs[Keys.SCREEN_ZOOM_PERCENT] ?: 100).coerceIn(80, 130),
             isLoggedIn = prefs[Keys.IS_LOGGED_IN] ?: false,
             isGuest = prefs[Keys.IS_GUEST] ?: false,
             userPhone = prefs[Keys.USER_PHONE] ?: "",
@@ -57,6 +61,13 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         context.quickKartDataStore.edit { it[Keys.NOTIFICATIONS_ENABLED] = enabled }
+    }
+
+    suspend fun setScreenZoomPercent(percent: Int) {
+        val normalized = ((percent.coerceIn(80, 130) + 2) / 5) * 5
+        context.quickKartDataStore.edit {
+            it[Keys.SCREEN_ZOOM_PERCENT] = normalized.coerceIn(80, 130)
+        }
     }
 
     suspend fun setSelectedNeighborhood(neighborhoodId: String) {

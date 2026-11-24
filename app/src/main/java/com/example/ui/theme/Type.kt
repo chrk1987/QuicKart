@@ -107,3 +107,33 @@ val QuickKartTypography = Typography(
         letterSpacing = 0.2.sp
     )
 )
+
+fun scaledQuickKartTypography(zoomPercent: Int): Typography {
+    val safePercent = zoomPercent.coerceIn(80, 130)
+    if (safePercent == 100) return QuickKartTypography
+    val factor = safePercent / 100f
+
+    fun TextStyle.scale(): TextStyle = copy(
+        fontSize = if (fontSize.isSp) (fontSize.value * factor).sp else fontSize,
+        lineHeight = if (lineHeight.isSp) (lineHeight.value * factor).sp else lineHeight,
+        letterSpacing = if (letterSpacing.isSp) (letterSpacing.value * factor).sp else letterSpacing
+    )
+
+    return QuickKartTypography.copy(
+        displayLarge = QuickKartTypography.displayLarge.scale(),
+        displayMedium = QuickKartTypography.displayMedium.scale(),
+        displaySmall = QuickKartTypography.displaySmall.scale(),
+        headlineLarge = QuickKartTypography.headlineLarge.scale(),
+        headlineMedium = QuickKartTypography.headlineMedium.scale(),
+        headlineSmall = QuickKartTypography.headlineSmall.scale(),
+        titleLarge = QuickKartTypography.titleLarge.scale(),
+        titleMedium = QuickKartTypography.titleMedium.scale(),
+        titleSmall = QuickKartTypography.titleSmall.scale(),
+        bodyLarge = QuickKartTypography.bodyLarge.scale(),
+        bodyMedium = QuickKartTypography.bodyMedium.scale(),
+        bodySmall = QuickKartTypography.bodySmall.scale(),
+        labelLarge = QuickKartTypography.labelLarge.scale(),
+        labelMedium = QuickKartTypography.labelMedium.scale(),
+        labelSmall = QuickKartTypography.labelSmall.scale()
+    )
+}

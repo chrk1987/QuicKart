@@ -10,6 +10,8 @@ import com.example.data.local.PreferencesManager
 import com.example.data.local.SavedAddressDao
 import com.example.data.local.SavedAddressEntity
 import com.example.data.local.SeedData
+import com.example.data.local.SupportTicketDao
+import com.example.data.local.SupportTicketEntity
 import com.example.data.local.UserPreferences
 import com.example.data.model.CartItem
 import com.example.data.model.Neighborhood
@@ -20,16 +22,27 @@ import com.example.data.model.Product
 import com.example.data.model.PromoCode
 import com.example.data.model.RestockSuggestion
 import com.example.data.model.SavedAddress
+import com.example.data.model.SupportIssueCategory
+import com.example.data.model.SupportMessage
+import com.example.data.model.SupportResolutionOption
+import com.example.data.model.SupportTicketRecord
+import com.example.data.model.SupportTicketStatus
+import com.example.data.model.computeSupportRefundEstimate
+import com.example.data.model.generateSupportDeskReply
+import com.example.data.model.orderLineItemKey
+import com.example.data.model.resolveInitialTicketOutcome
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 class QuickKartRepository(
     private val favoriteDao: FavoriteDao,
     private val cartDao: CartDao,
     private val addressDao: SavedAddressDao,
     private val orderDao: OrderDao,
+    private val supportTicketDao: SupportTicketDao,
     private val prefsManager: PreferencesManager
 ) {
     val products: List<Product> = SeedData.products
@@ -60,6 +73,9 @@ class QuickKartRepository(
     val orders: Flow<List<OrderRecord>> = orderDao.observeOrders()
         .map { list -> list.map { it.toDomain() } }
 
+    val supportTickets: Flow<List<SupportTicketRecord>> = supportTicketDao.observeTickets()
+        .map { list -> list.map { it.toDomain() } }
+
     suspend fun ensureSeeded() {
         if (addressDao.count() == 0) {
             addressDao.insertAll(SeedData.savedAddresses.map { SavedAddressEntity.fromDomain(it) })
@@ -70,6 +86,11 @@ class QuickKartRepository(
             favoriteDao.insertFavorite(FavoriteEntity("prod_a2_milk"))
             favoriteDao.insertFavorite(FavoriteEntity("prod_sourdough"))
             favoriteDao.insertFavorite(FavoriteEntity("prod_cold_brew"))
+        }
+        if (supportTicketDao.count() == 0) {
+            supportTicketDao.insertAll(
+                SeedData.createSeededSupportTickets().map { SupportTicketEntity.fromDomain(it) }
+            )
         }
     }
 
@@ -139,6 +160,23 @@ class QuickKartRepository(
         }
     }
 
+    suspend fun quickAddProducts(itemsToAdd: List<Product>) {
+        itemsToAdd.forEach { product ->
+            val variant = product.defaultVariant
+            val key = "${product.id}::${variant.id}"
+            val existing = cartDao.getCartItem(key)
+            cartDao.upsertCartItem(
+                CartItemEntity(
+                    key = key,
+                    productId = product.id,
+                    variantId = variant.id,
+                    quantity = (existing?.quantity ?: 0) + 1,
+                    addedAtMillis = existing?.addedAtMillis ?: System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
     suspend fun clearCart() = cartDao.clearCart()
 
     suspend fun addAddress(address: SavedAddress) {
@@ -199,6 +237,7 @@ class QuickKartRepository(
 
     suspend fun setDarkTheme(enabled: Boolean) = prefsManager.setDarkTheme(enabled)
     suspend fun setNotificationsEnabled(enabled: Boolean) = prefsManager.setNotificationsEnabled(enabled)
+    suspend fun setScreenZoomPercent(percent: Int) = prefsManager.setScreenZoomPercent(percent)
     suspend fun setSelectedNeighborhood(id: String) = prefsManager.setSelectedNeighborhood(id)
     suspend fun setSelectedAddressId(id: String) = prefsManager.setSelectedAddressId(id)
     suspend fun signInWithPhone(phone: String, neighborhoodId: String) =
@@ -240,5 +279,140 @@ class QuickKartRepository(
         }
             .sortedByDescending { (it.daysSinceLastOrder.toFloat() / it.avgIntervalDays) * it.orderCount }
             .take(3)
+    }
+
+    suspend fun createSupportTicket(
+        order: OrderRecord,
+        category: SupportIssueCategory,
+        selectedItemKeys: Set<String>,
+        preferredResolution: SupportResolutionOption,
+        userNote: String,
+        photoUriString: String?
+    ): SupportTicketRecord {
+        val now = System.currentTimeMillis()
+        val ticketId = "SUP-${Random.nextInt(5000, 9999)}"
+        val selectedItems = order.items.filter { orderLineItemKey(it) in selectedItemKeys }
+        val affectedItemsSummary = if (selectedItems.isNotEmpty()) {
+            selectedItems.joinToString(", ") { "${it.quantity}x ${it.productName} (${it.variantLabel})" }
+        } else {
+            "Full Order ${order.orderId} (${order.totalItemCount} items)"
+        }
+        val estimatedAmount = computeSupportRefundEstimate(order, selectedItemKeys, category)
+        val outcome = resolveInitialTicketOutcome(
+            ticketId = ticketId,
+            order = order,
+            category = category,
+            affectedItemsSummary = affectedItemsSummary,
+            affectedAmountInr = estimatedAmount,
+            preferredResolution = preferredResolution,
+            hasPhoto = !photoUriString.isNullOrBlank()
+        )
+        val cleanNote = userNote.trim().ifBlank {
+            "${category.label} reported for $affectedItemsSummary"
+        }
+        val initialMessages = listOf(
+            SupportMessage(
+                id = "msg_${now}_u",
+                isUser = true,
+                text = cleanNote,
+                timestampMillis = now
+            ),
+            SupportMessage(
+                id = "msg_${now}_d",
+                isUser = false,
+                text = outcome.deskMessage,
+                timestampMillis = now + 500L
+            )
+        )
+
+        val record = SupportTicketRecord(
+            ticketId = ticketId,
+            orderId = order.orderId,
+            createdAtMillis = now,
+            updatedAtMillis = now + 500L,
+            category = category,
+            affectedItemsSummary = affectedItemsSummary,
+            affectedAmountInr = estimatedAmount,
+            preferredResolution = preferredResolution,
+            resolutionSummary = outcome.resolutionSummary,
+            status = outcome.status,
+            photoUriString = photoUriString,
+            messages = initialMessages,
+            csatRating = null
+        )
+        supportTicketDao.upsertTicket(SupportTicketEntity.fromDomain(record))
+        return record
+    }
+
+    suspend fun sendSupportMessage(ticketId: String, userText: String) {
+        val clean = userText.trim()
+        if (clean.isEmpty()) return
+        val current = supportTicketDao.getTicketById(ticketId)?.toDomain() ?: return
+        val now = System.currentTimeMillis()
+        val userMsg = SupportMessage(
+            id = "msg_${now}_u",
+            isUser = true,
+            text = clean,
+            timestampMillis = now
+        )
+        val action = generateSupportDeskReply(current, clean)
+        val deskMsg = SupportMessage(
+            id = "msg_${now}_d",
+            isUser = false,
+            text = action.replyText,
+            timestampMillis = now + 400L
+        )
+        val updated = current.copy(
+            updatedAtMillis = now + 400L,
+            status = action.newStatus ?: current.status,
+            resolutionSummary = action.updatedResolutionSummary ?: current.resolutionSummary,
+            messages = current.messages + userMsg + deskMsg
+        )
+        supportTicketDao.upsertTicket(SupportTicketEntity.fromDomain(updated))
+    }
+
+    suspend fun resolveSupportTicket(ticketId: String, resolutionSummary: String? = null) {
+        val current = supportTicketDao.getTicketById(ticketId)?.toDomain() ?: return
+        val now = System.currentTimeMillis()
+        val finalSummary = resolutionSummary ?: current.resolutionSummary
+        val closeMsg = SupportMessage(
+            id = "msg_${now}_res",
+            isUser = false,
+            text = "Ticket $ticketId marked Resolved ($finalSummary). Thank you for shopping with QuickKart!",
+            timestampMillis = now
+        )
+        val updated = current.copy(
+            updatedAtMillis = now,
+            status = SupportTicketStatus.RESOLVED,
+            resolutionSummary = finalSummary,
+            messages = current.messages + closeMsg
+        )
+        supportTicketDao.upsertTicket(SupportTicketEntity.fromDomain(updated))
+    }
+
+    suspend fun reopenSupportTicket(ticketId: String) {
+        val current = supportTicketDao.getTicketById(ticketId)?.toDomain() ?: return
+        val now = System.currentTimeMillis()
+        val reopenMsg = SupportMessage(
+            id = "msg_${now}_reopen",
+            isUser = false,
+            text = "Ticket $ticketId has been reopened for follow-up. Tell us what's still unresolved and our Care Desk will assist immediately.",
+            timestampMillis = now
+        )
+        val updated = current.copy(
+            updatedAtMillis = now,
+            status = SupportTicketStatus.UNDER_REVIEW,
+            csatRating = null,
+            messages = current.messages + reopenMsg
+        )
+        supportTicketDao.upsertTicket(SupportTicketEntity.fromDomain(updated))
+    }
+
+    suspend fun submitSupportCsat(ticketId: String, rating: Int) {
+        val current = supportTicketDao.getTicketById(ticketId)?.toDomain() ?: return
+        val updated = current.copy(
+            csatRating = rating.coerceIn(1, 5)
+        )
+        supportTicketDao.upsertTicket(SupportTicketEntity.fromDomain(updated))
     }
 }

@@ -81,7 +81,8 @@ data class OrderEntity(
     val totalPaid: Int,
     val userRating: Int?,
     val praiseTagsJson: String,
-    val feedbackComment: String
+    val feedbackComment: String,
+    val deliveryWindowLabel: String = "Express • 8 mins"
 ) {
     fun toDomain(): OrderRecord {
         val items = mutableListOf<OrderLineItem>()
@@ -134,7 +135,8 @@ data class OrderEntity(
             totalPaid = totalPaid,
             userRating = userRating,
             praiseTags = praiseTags,
-            feedbackComment = feedbackComment
+            feedbackComment = feedbackComment,
+            deliveryWindowLabel = deliveryWindowLabel
         )
     }
 
@@ -180,7 +182,8 @@ data class OrderEntity(
                 totalPaid = order.totalPaid,
                 userRating = order.userRating,
                 praiseTagsJson = stringListToJson(order.praiseTags),
-                feedbackComment = order.feedbackComment
+                feedbackComment = order.feedbackComment,
+                deliveryWindowLabel = order.deliveryWindowLabel
             )
         }
 
@@ -200,3 +203,93 @@ data class OrderEntity(
         }
     }
 }
+
+@Entity(tableName = "support_tickets")
+data class SupportTicketEntity(
+    @PrimaryKey val ticketId: String,
+    val orderId: String,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long,
+    val categoryName: String,
+    val affectedItemsSummary: String,
+    val affectedAmountInr: Int,
+    val preferredResolutionName: String,
+    val resolutionSummary: String,
+    val statusName: String,
+    val photoUriString: String?,
+    val messagesJson: String,
+    val csatRating: Int?
+) {
+    fun toDomain(): com.example.data.model.SupportTicketRecord {
+        val messages = mutableListOf<com.example.data.model.SupportMessage>()
+        val msgArray = JSONArray(messagesJson)
+        for (i in 0 until msgArray.length()) {
+            val obj = msgArray.getJSONObject(i)
+            messages.add(
+                com.example.data.model.SupportMessage(
+                    id = obj.getString("id"),
+                    isUser = obj.getBoolean("isUser"),
+                    text = obj.getString("text"),
+                    timestampMillis = obj.getLong("timestampMillis")
+                )
+            )
+        }
+        val category = runCatching {
+            com.example.data.model.SupportIssueCategory.valueOf(categoryName)
+        }.getOrDefault(com.example.data.model.SupportIssueCategory.OTHER)
+        val resolution = runCatching {
+            com.example.data.model.SupportResolutionOption.valueOf(preferredResolutionName)
+        }.getOrDefault(com.example.data.model.SupportResolutionOption.INSTANT_CREDIT)
+        val status = runCatching {
+            com.example.data.model.SupportTicketStatus.valueOf(statusName)
+        }.getOrDefault(com.example.data.model.SupportTicketStatus.OPEN)
+
+        return com.example.data.model.SupportTicketRecord(
+            ticketId = ticketId,
+            orderId = orderId,
+            createdAtMillis = createdAtMillis,
+            updatedAtMillis = updatedAtMillis,
+            category = category,
+            affectedItemsSummary = affectedItemsSummary,
+            affectedAmountInr = affectedAmountInr,
+            preferredResolution = resolution,
+            resolutionSummary = resolutionSummary,
+            status = status,
+            photoUriString = photoUriString,
+            messages = messages,
+            csatRating = csatRating
+        )
+    }
+
+    companion object {
+        fun fromDomain(ticket: com.example.data.model.SupportTicketRecord): SupportTicketEntity {
+            val msgArray = JSONArray()
+            ticket.messages.forEach { msg ->
+                msgArray.put(
+                    JSONObject().apply {
+                        put("id", msg.id)
+                        put("isUser", msg.isUser)
+                        put("text", msg.text)
+                        put("timestampMillis", msg.timestampMillis)
+                    }
+                )
+            }
+            return SupportTicketEntity(
+                ticketId = ticket.ticketId,
+                orderId = ticket.orderId,
+                createdAtMillis = ticket.createdAtMillis,
+                updatedAtMillis = ticket.updatedAtMillis,
+                categoryName = ticket.category.name,
+                affectedItemsSummary = ticket.affectedItemsSummary,
+                affectedAmountInr = ticket.affectedAmountInr,
+                preferredResolutionName = ticket.preferredResolution.name,
+                resolutionSummary = ticket.resolutionSummary,
+                statusName = ticket.status.name,
+                photoUriString = ticket.photoUriString,
+                messagesJson = msgArray.toString(),
+                csatRating = ticket.csatRating
+            )
+        }
+    }
+}
+
