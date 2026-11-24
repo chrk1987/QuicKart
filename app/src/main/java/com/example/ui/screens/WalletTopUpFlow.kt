@@ -322,7 +322,7 @@ private fun PaymentFlowDialog(
                                     Checkbox(
                                         checked = saveForLater,
                                         onCheckedChange = { saveForLater = it },
-                                        colors = CheckboxDefaults.colors(checkedColor = tokens.deliveryGreenDeep)
+                                        colors = CheckboxDefaults.colors(checkedColor = tokens.brandYellow, checkmarkColor = tokens.onBrandYellow)
                                     )
                                     Text(
                                         if (method == TopUpMethod.CARD) "Save card (last 4 digits only) for faster checkout"
@@ -482,7 +482,7 @@ private fun SavedCardDetails(
                 Text("Saved card •••• $last4", style = MaterialTheme.typography.titleSmall, color = tokens.ink)
                 Text("Enter CVV to pay", style = MaterialTheme.typography.bodySmall, color = tokens.muted)
             }
-            Icon(Icons.Rounded.CheckCircle, contentDescription = "Selected", tint = tokens.deliveryGreenDeep)
+            Icon(Icons.Rounded.CheckCircle, contentDescription = "Selected", tint = tokens.ink)
         }
     }
     OutlinedTextField(
@@ -498,7 +498,7 @@ private fun SavedCardDetails(
     )
     androidx.compose.material3.TextButton(
         onClick = onUseDifferentCard,
-        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+        colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink),
         modifier = Modifier.testTag("use_different_card_button")
     ) { Text("Use a different card", fontWeight = FontWeight.Bold) }
 }
@@ -567,7 +567,7 @@ private fun AmountStep(
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = tokens.deliveryGreenDeep,
+        color = Color(0xFF141414), // brand black card
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -996,7 +996,7 @@ private fun ResultStep(
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             ReceiptRow("Transaction ID", txnRef)
             ReceiptRow("Status", if (success) "Success" else "Failed", accent)
-            if (newBalanceInr != null) ReceiptRow("Wallet balance", "₹$newBalanceInr", tokens.deliveryGreenDeep)
+            if (newBalanceInr != null) ReceiptRow("Wallet balance", "₹$newBalanceInr")
         }
     }
 

@@ -424,7 +424,7 @@ fun ColumnScope.OffersAndRewardsContent(
     // Referral card
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = tokens.deliveryGreenDeep,
+        color = Color(0xFF141414) /* brand black card, like the profile header */,
         modifier = Modifier
             .fillMaxWidth()
             .testTag("referral_card")
@@ -552,7 +552,7 @@ fun ColumnScope.OffersAndRewardsContent(
                         clipboard.setText(AnnotatedString(promo.code))
                         onShowMessage("${promo.code} copied • apply it at checkout")
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep)
+                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink)
                 ) { Text("Copy", fontWeight = FontWeight.Bold) }
             }
         }

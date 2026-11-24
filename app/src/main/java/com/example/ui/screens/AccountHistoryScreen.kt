@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.data.model.SupportTicketStatus
+
 import androidx.compose.material.icons.rounded.Shield
 
 import androidx.compose.material.icons.rounded.Info
@@ -396,8 +398,8 @@ fun AccountHistoryScreen(
                 AccountParentItem(
                     key = SECTION_WALLET,
                     icon = Icons.Rounded.AccountBalanceWallet,
-                    iconBackground = tokens.deliveryGreenSoft,
-                    iconTint = tokens.deliveryGreenDeep,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
                     title = "Wallet",
                     summary = "Balance ₹${uiState.walletBalance}",
                     openSection = openSection,
@@ -406,7 +408,7 @@ fun AccountHistoryScreen(
                     AccountDetailRow(
                         label = "Current balance",
                         value = "₹${uiState.walletBalance}",
-                        valueColor = tokens.deliveryGreenDeep,
+                        valueColor = tokens.ink,
                         emphasize = true
                     )
                     AccountDetailRow("Transactions", "${uiState.walletTransactions.size}")
@@ -487,8 +489,8 @@ fun AccountHistoryScreen(
                             },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = tokens.deliveryGreenDeep,
-                                contentColor = Color.White
+                                containerColor = tokens.brandYellow,
+                                contentColor = tokens.onBrandYellow
                             ),
                             modifier = Modifier
                                 .weight(1f)
@@ -597,7 +599,7 @@ fun AccountHistoryScreen(
                     ) {
                         Text(
                             text = "Reorder, invoices & restock",
-                            color = tokens.deliveryGreenDeep,
+                            color = tokens.ink,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -655,8 +657,8 @@ fun AccountHistoryScreen(
                 AccountParentItem(
                     key = SECTION_SUPPORT,
                     icon = Icons.Rounded.SupportAgent,
-                    iconBackground = tokens.deliveryGreenSoft,
-                    iconTint = tokens.deliveryGreenDeep,
+                    iconBackground = tokens.brandYellowSoft,
+                    iconTint = tokens.ink,
                     title = "Help & Support",
                     summary = if (uiState.openSupportTicketCount > 0) {
                         "${uiState.openSupportTicketCount} open tickets"
@@ -682,7 +684,8 @@ fun AccountHistoryScreen(
                                 title = ticket.category.label,
                                 subtitle = "Order #${ticket.orderId} • ${formatAccountDate(ticket.updatedAtMillis)}",
                                 trailing = ticket.status.label,
-                                trailingColor = tokens.deliveryGreenDeep,
+                                // Green only for resolved; open tickets stay neutral.
+                                trailingColor = if (ticket.status == SupportTicketStatus.RESOLVED) tokens.deliveryGreenDeep else tokens.ink,
                                 testTag = "account_ticket_${ticket.ticketId}"
                             )
                         }
@@ -696,7 +699,7 @@ fun AccountHistoryScreen(
                     ) {
                         Text(
                             text = "Get Help • Missing item, refund or live chat",
-                            color = tokens.deliveryGreenDeep,
+                            color = tokens.ink,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -708,7 +711,7 @@ fun AccountHistoryScreen(
                 AccountParentItem(
                     key = SECTION_SETTINGS,
                     icon = Icons.Rounded.Settings,
-                    iconBackground = tokens.surfaceElevated,
+                    iconBackground = tokens.brandYellowSoft,
                     iconTint = tokens.ink,
                     title = "Settings & Preferences",
                     summary = listOf(
@@ -1291,7 +1294,7 @@ private fun SignInMethodsCard(
                 when {
                     googleEmail.isBlank() -> TextButton(
                         onClick = onLinkGoogle,
-                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink),
                         modifier = Modifier.testTag("account_link_google_button")
                     ) { Text("Link", fontWeight = FontWeight.Bold) }
                     // The account used to sign in can't be unlinked from here.
@@ -1411,7 +1414,7 @@ private fun SavedAddressRow(
                     Text(
                         text = "Pin: $coords • ${address.country}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = tokens.deliveryGreenDeep
+                        color = tokens.muted
                     )
                 }
             }

@@ -151,7 +151,7 @@ fun WalletSheet(
 
                     Surface(
                         shape = RoundedCornerShape(22.dp),
-                        color = tokens.deliveryGreenDeep,
+                        color = Color(0xFF141414) /* brand black card, like the profile header */,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
