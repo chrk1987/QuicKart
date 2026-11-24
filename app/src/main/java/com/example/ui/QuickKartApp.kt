@@ -626,8 +626,8 @@ private fun TabNavIcon(
                 badge = {
                     if (cartCount > 0) {
                         Badge(
-                            containerColor = tokens.deliveryGreenDeep,
-                            contentColor = Color.White,
+                            containerColor = tokens.ink,
+                            contentColor = tokens.background,
                             // Sit on the icon's top-right corner instead of covering the cart.
                             modifier = Modifier.offset(x = 6.dp, y = (-4).dp)
                         ) {

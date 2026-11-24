@@ -118,7 +118,7 @@ fun ProductDetailBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Surface(
-                            color = tokens.deliveryGreenSoft,
+                            color = tokens.brandYellowSoft,
                             shape = RoundedCornerShape(50)
                         ) {
                             Row(
@@ -129,13 +129,13 @@ fun ProductDetailBottomSheet(
                                 Icon(
                                     imageVector = Icons.Rounded.Timer,
                                     contentDescription = null,
-                                    tint = tokens.deliveryGreenDeep,
+                                    tint = tokens.ink,
                                     modifier = Modifier.size(metrics.iconSmall)
                                 )
                                 Text(
                                     text = "${product.deliveryMinutes} MINS",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = tokens.deliveryGreenDeep
+                                    color = tokens.ink
                                 )
                             }
                         }
@@ -325,8 +325,8 @@ fun ProductDetailBottomSheet(
                         onClick = { onIncrementCart(product.id, selectedVariant.id) },
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = tokens.deliveryGreenDeep,
-                            contentColor = androidx.compose.ui.graphics.Color.White
+                            containerColor = tokens.brandYellow,
+                            contentColor = tokens.onBrandYellow
                         ),
                         modifier = Modifier
                             .defaultMinSize(minHeight = 50.dp)
@@ -339,7 +339,7 @@ fun ProductDetailBottomSheet(
                     }
                 } else {
                     Surface(
-                        color = tokens.deliveryGreenDeep,
+                        color = tokens.brandYellow,
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.defaultMinSize(minHeight = 50.dp)
                     ) {
@@ -354,14 +354,14 @@ fun ProductDetailBottomSheet(
                                 Icon(
                                     imageVector = Icons.Rounded.Remove,
                                     contentDescription = "Decrease quantity",
-                                    tint = androidx.compose.ui.graphics.Color.White,
+                                    tint = tokens.onBrandYellow,
                                     modifier = Modifier.size(metrics.iconMedium)
                                 )
                             }
                             Text(
                                 text = qtyInCart.toString(),
                                 style = MaterialTheme.typography.titleMedium,
-                                color = androidx.compose.ui.graphics.Color.White,
+                                color = tokens.onBrandYellow,
                                 modifier = Modifier.padding(horizontal = 10.dp)
                             )
                             IconButton(
@@ -371,7 +371,7 @@ fun ProductDetailBottomSheet(
                                 Icon(
                                     imageVector = Icons.Rounded.Add,
                                     contentDescription = "Increase quantity",
-                                    tint = androidx.compose.ui.graphics.Color.White,
+                                    tint = tokens.onBrandYellow,
                                     modifier = Modifier.size(metrics.iconMedium)
                                 )
                             }

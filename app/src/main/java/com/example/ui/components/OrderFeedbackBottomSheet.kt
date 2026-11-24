@@ -289,8 +289,8 @@ fun OrderFeedbackBottomSheet(
                 },
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = tokens.deliveryGreenDeep,
-                    contentColor = Color.White
+                    containerColor = tokens.brandYellow,
+                    contentColor = tokens.onBrandYellow
                 ),
                 modifier = Modifier
                     .fillMaxWidth()

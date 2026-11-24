@@ -233,7 +233,7 @@ fun CartCheckoutScreen(
                                 "${itemCountLabel(uiState.totalCartCount)} • Scheduled: ${draft.selectedDeliverySlot.displaySummary}"
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = tokens.deliveryGreenDeep
+                            color = tokens.muted
                         )
                     }
                     Surface(
@@ -329,7 +329,7 @@ fun CartCheckoutScreen(
                                 )
                                 TextButton(
                                     onClick = { showAddAddressDialog = true },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                                    colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink),
                                     modifier = Modifier.testTag("cart_add_address_button")
                                 ) {
                                     Icon(
@@ -401,7 +401,7 @@ fun CartCheckoutScreen(
                                                 Text(
                                                     text = "Pin: $coords",
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = tokens.deliveryGreenDeep
+                                                    color = tokens.muted
                                                 )
                                             }
                                         }
@@ -465,7 +465,7 @@ fun CartCheckoutScreen(
 
                                     // Quantity Stepper
                                     Surface(
-                                        color = tokens.deliveryGreenDeep,
+                                        color = tokens.brandYellow,
                                         shape = RoundedCornerShape(10.dp)
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -478,14 +478,14 @@ fun CartCheckoutScreen(
                                                 Icon(
                                                     imageVector = Icons.Rounded.Remove,
                                                     contentDescription = "Decrease quantity",
-                                                    tint = Color.White,
+                                                    tint = tokens.onBrandYellow,
                                                     modifier = Modifier.size(metrics.iconSmall)
                                                 )
                                             }
                                             Text(
                                                 text = cartItem.quantity.toString(),
                                                 style = MaterialTheme.typography.labelLarge,
-                                                color = Color.White,
+                                                color = tokens.onBrandYellow,
                                                 modifier = Modifier.padding(horizontal = 3.dp)
                                             )
                                             IconButton(
@@ -497,7 +497,7 @@ fun CartCheckoutScreen(
                                                 Icon(
                                                     imageVector = Icons.Rounded.Add,
                                                     contentDescription = "Increase quantity",
-                                                    tint = Color.White,
+                                                    tint = tokens.onBrandYellow,
                                                     modifier = Modifier.size(metrics.iconSmall)
                                                 )
                                             }
@@ -552,7 +552,7 @@ fun CartCheckoutScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.LocalOffer,
                                     contentDescription = null,
-                                    tint = tokens.promoOrange,
+                                    tint = tokens.ink,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
@@ -564,7 +564,7 @@ fun CartCheckoutScreen(
                                 if (draft.appliedPromo == null) {
                                     TextButton(
                                         onClick = onApplyBestOffer,
-                                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                                        colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink),
                                         modifier = Modifier.testTag("apply_best_offer_button")
                                     ) {
                                         Text("Apply best offer", fontWeight = FontWeight.Bold)
@@ -758,10 +758,10 @@ fun CartCheckoutScreen(
                                     val selected = chip in draft.selectedInstructions
                                     Surface(
                                         shape = RoundedCornerShape(50),
-                                        color = if (selected) tokens.deliveryGreenSoft else tokens.surfaceElevated,
+                                        color = if (selected) tokens.brandYellow else tokens.surfaceElevated,
                                         border = BorderStroke(
                                             1.dp,
-                                            if (selected) tokens.deliveryGreen else tokens.border
+                                            if (selected) tokens.brandYellow else tokens.border
                                         ),
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(50))
@@ -771,7 +771,7 @@ fun CartCheckoutScreen(
                                         Text(
                                             text = chip,
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = if (selected) tokens.deliveryGreenDeep else tokens.ink,
+                                            color = if (selected) tokens.onBrandYellow else tokens.ink,
                                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                                         )
                                     }
@@ -894,8 +894,8 @@ fun CartCheckoutScreen(
                                             onClick = { topUpAmount = walletShortfall },
                                             shape = RoundedCornerShape(10.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = tokens.deliveryGreenDeep,
-                                                contentColor = Color.White
+                                                containerColor = tokens.brandYellow,
+                                                contentColor = tokens.onBrandYellow
                                             ),
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                                             modifier = Modifier.testTag("checkout_topup_wallet_button")
@@ -981,8 +981,8 @@ fun CartCheckoutScreen(
                     enabled = !insufficientWallet,
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = tokens.deliveryGreenDeep,
-                        contentColor = Color.White,
+                        containerColor = tokens.brandYellow,
+                        contentColor = tokens.onBrandYellow,
                         disabledContainerColor = tokens.border,
                         disabledContentColor = tokens.muted
                     ),
@@ -1100,7 +1100,7 @@ private fun DeliveryWindowPickerCard(
                     Icon(
                         imageVector = Icons.Rounded.Schedule,
                         contentDescription = null,
-                        tint = tokens.deliveryGreenDeep,
+                        tint = tokens.ink,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
@@ -1110,7 +1110,7 @@ private fun DeliveryWindowPickerCard(
                     )
                 }
                 Surface(
-                    color = tokens.deliveryGreenSoft,
+                    color = tokens.brandYellowSoft,
                     shape = RoundedCornerShape(50)
                 ) {
                     Text(
@@ -1120,7 +1120,7 @@ private fun DeliveryWindowPickerCard(
                             selectedSlot.displaySummary
                         },
                         style = MaterialTheme.typography.labelSmall,
-                        color = tokens.deliveryGreenDeep,
+                        color = tokens.ink,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                     )
@@ -1210,13 +1210,13 @@ private fun DeliveryWindowPickerCard(
                                     )
                                     slot.badge?.let { badge ->
                                         Surface(
-                                            color = if (slot.isExpress) tokens.deliveryGreenDeep else tokens.brandYellow,
+                                            color = if (slot.isExpress) tokens.ink else tokens.brandYellow,
                                             shape = RoundedCornerShape(6.dp)
                                         ) {
                                             Text(
                                                 text = badge,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = if (slot.isExpress) Color.White else tokens.onBrandYellow,
+                                                color = if (slot.isExpress) tokens.background else tokens.onBrandYellow,
                                                 fontWeight = FontWeight.ExtraBold,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )

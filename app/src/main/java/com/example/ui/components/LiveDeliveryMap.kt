@@ -601,9 +601,9 @@ fun InteractiveDeliveryRouteMap(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Blinkit Green Fullscreen Header
+                    // Brand black fullscreen header
                     Surface(
-                        color = tokens.deliveryGreenDeep,
+                        color = Color(0xFF141414) /* brand black card */,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -963,10 +963,10 @@ private fun BlinkitOsmStreetMapSurface(
         ) {
             Surface(
                 shape = RoundedCornerShape(50),
-                color = if (isLiveGpsTracking) tokens.deliveryGreenDeep else tokens.surface.copy(alpha = 0.96f),
+                color = if (isLiveGpsTracking) tokens.brandYellow else tokens.surface.copy(alpha = 0.96f),
                 border = BorderStroke(
                     1.dp,
-                    if (isLiveGpsTracking) tokens.deliveryGreenDeep else tokens.border
+                    if (isLiveGpsTracking) tokens.brandYellow else tokens.border
                 ),
                 modifier = Modifier
                     .defaultMinSize(minHeight = 40.dp)
@@ -983,7 +983,7 @@ private fun BlinkitOsmStreetMapSurface(
                     Icon(
                         imageVector = Icons.Rounded.MyLocation,
                         contentDescription = "Toggle live GPS pin",
-                        tint = if (isLiveGpsTracking) Color.White else tokens.deliveryGreenDeep,
+                        tint = if (isLiveGpsTracking) tokens.onBrandYellow else tokens.ink,
                         modifier = Modifier.size(metrics.iconSmall)
                     )
                     Text(
@@ -1334,8 +1334,8 @@ private fun TelemetryChip(
     val metrics = QuickKartMetricsTokens.metrics
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (highlighted) tokens.deliveryGreenSoft else tokens.surfaceElevated,
-        border = BorderStroke(1.dp, if (highlighted) tokens.deliveryGreen else tokens.border)
+        color = if (highlighted) tokens.brandYellowSoft else tokens.surfaceElevated,
+        border = BorderStroke(1.dp, if (highlighted) tokens.brandYellow else tokens.border)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
@@ -1345,14 +1345,14 @@ private fun TelemetryChip(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (highlighted) tokens.deliveryGreenDeep else tokens.muted,
+                tint = if (highlighted) tokens.ink else tokens.muted,
                 modifier = Modifier.size(metrics.iconSmall)
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = if (mono) JetBrainsMonoFontFamily else null,
-                color = if (highlighted) tokens.deliveryGreenDeep else tokens.ink,
+                color = if (highlighted) tokens.ink else tokens.ink,
                 fontWeight = if (highlighted) FontWeight.Bold else FontWeight.Medium
             )
         }

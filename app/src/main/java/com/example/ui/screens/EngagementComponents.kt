@@ -542,7 +542,7 @@ fun ColumnScope.OffersAndRewardsContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(Icons.Rounded.LocalOffer, contentDescription = null, tint = tokens.promoOrange)
+                Icon(Icons.Rounded.LocalOffer, contentDescription = null, tint = tokens.ink)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(promo.code, style = MaterialTheme.typography.titleSmall, color = tokens.ink, fontFamily = JetBrainsMonoFontFamily, fontWeight = FontWeight.Bold)
                     Text(promo.title, style = MaterialTheme.typography.bodySmall, color = tokens.muted)

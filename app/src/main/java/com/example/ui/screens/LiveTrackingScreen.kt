@@ -296,7 +296,7 @@ fun LiveTrackingScreen(
                 Card(
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = tokens.deliveryGreenDeep
+                        containerColor = Color(0xFF141414) /* brand black card */
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -509,7 +509,7 @@ fun LiveTrackingScreen(
                             )
                         }
                         Surface(
-                            color = tokens.deliveryGreenSoft,
+                            color = tokens.brandYellowSoft,
                             shape = CircleShape,
                             modifier = Modifier
                                 .size(maxOf(48.dp, metrics.badgeButtonSize))
@@ -528,7 +528,7 @@ fun LiveTrackingScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.Call,
                                     contentDescription = "Call rider",
-                                    tint = tokens.deliveryGreenDeep,
+                                    tint = tokens.ink,
                                     modifier = Modifier.size(metrics.iconMedium)
                                 )
                             }
@@ -624,8 +624,8 @@ fun LiveTrackingScreen(
                                 enabled = order.stage != OrderStage.DELIVERED || autoSimulating,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (autoSimulating) tokens.alertRed else tokens.deliveryGreenDeep,
-                                    contentColor = Color.White
+                                    containerColor = if (autoSimulating) tokens.alertRed else tokens.brandYellow,
+                                    contentColor = if (autoSimulating) Color.White else tokens.onBrandYellow
                                 ),
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                                 modifier = Modifier
@@ -684,7 +684,7 @@ fun LiveTrackingScreen(
                             )
                             TextButton(
                                 onClick = { showOrderSummarySheet = true },
-                                colors = ButtonDefaults.textButtonColors(contentColor = tokens.deliveryGreenDeep),
+                                colors = ButtonDefaults.textButtonColors(contentColor = tokens.ink),
                                 modifier = Modifier.testTag("open_order_summary_sheet_button")
                             ) {
                                 Text("Full Bill", fontWeight = FontWeight.Bold)
@@ -740,7 +740,7 @@ fun LiveTrackingScreen(
                             OutlinedButton(
                                 onClick = { saveAndOpenReceipt() },
                                 shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, tokens.deliveryGreenDeep),
+                                border = BorderStroke(1.dp, tokens.ink),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .defaultMinSize(minHeight = 48.dp)
@@ -749,13 +749,13 @@ fun LiveTrackingScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.Download,
                                     contentDescription = null,
-                                    tint = tokens.deliveryGreenDeep,
+                                    tint = tokens.ink,
                                     modifier = Modifier.size(metrics.iconMedium)
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
                                     text = "Download PDF Receipt",
-                                    color = tokens.deliveryGreenDeep,
+                                    color = tokens.ink,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -1142,8 +1142,8 @@ private fun PostDeliveryRatingCard(
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = tokens.deliveryGreenDeep,
-                        contentColor = Color.White
+                        containerColor = tokens.brandYellow,
+                        contentColor = tokens.onBrandYellow
                     ),
                     modifier = Modifier
                         .fillMaxWidth()

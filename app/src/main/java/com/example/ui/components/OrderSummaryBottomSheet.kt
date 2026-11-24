@@ -180,7 +180,7 @@ fun OrderSummaryBottomSheet(
 
             // Real-Time Estimated Delivery Time Card
             Surface(
-                color = tokens.deliveryGreenDeep,
+                color = Color(0xFF141414) /* brand black card */,
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -304,7 +304,7 @@ fun OrderSummaryBottomSheet(
                     Icon(
                         imageVector = Icons.Rounded.LocationOn,
                         contentDescription = null,
-                        tint = tokens.deliveryGreenDeep,
+                        tint = tokens.ink,
                         modifier = Modifier.size(metrics.iconMedium)
                     )
                     Column(
@@ -325,7 +325,7 @@ fun OrderSummaryBottomSheet(
                         Text(
                             text = "Window: ${order.deliveryWindowLabel}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = tokens.deliveryGreenDeep,
+                            color = tokens.muted,
                             fontWeight = FontWeight.SemiBold
                         )
                         if (order.deliveryInstructions.isNotEmpty() || order.riderNote.isNotBlank()) {
@@ -530,7 +530,7 @@ fun OrderSummaryBottomSheet(
                 OutlinedButton(
                     onClick = onDownloadReceipt,
                     shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, tokens.deliveryGreenDeep),
+                    border = BorderStroke(1.dp, tokens.ink),
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 48.dp)
@@ -539,14 +539,14 @@ fun OrderSummaryBottomSheet(
                     Icon(
                         imageVector = Icons.Rounded.Download,
                         contentDescription = null,
-                        tint = tokens.deliveryGreenDeep,
+                        tint = tokens.ink,
                         modifier = Modifier.size(metrics.iconMedium)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "Download PDF Receipt",
                         style = MaterialTheme.typography.labelLarge,
-                        color = tokens.deliveryGreenDeep,
+                        color = tokens.ink,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -674,13 +674,13 @@ fun LiveOrderSummarySheetTriggerBar(
                     Text(
                         text = "$etaLabel • Tap for items & bill breakdown",
                         style = MaterialTheme.typography.bodySmall,
-                        color = tokens.deliveryGreenDeep,
+                        color = tokens.muted,
                         fontWeight = FontWeight.Medium
                     )
                 }
 
                 Surface(
-                    color = tokens.deliveryGreenDeep,
+                    color = tokens.ink,
                     shape = RoundedCornerShape(50)
                 ) {
                     Row(
@@ -691,13 +691,13 @@ fun LiveOrderSummarySheetTriggerBar(
                         Text(
                             text = "Summary",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
+                            color = tokens.background,
                             fontWeight = FontWeight.Bold
                         )
                         Icon(
                             imageVector = Icons.Rounded.KeyboardArrowUp,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = tokens.background,
                             modifier = Modifier.size(metrics.iconSmall)
                         )
                     }

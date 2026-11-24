@@ -233,7 +233,7 @@ fun StorefrontScreen(
                                             // ETA is shown in the "N MIN" pill next to the header icons.
                                             text = activeNeighborhood?.name ?: "Select Area",
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = tokens.deliveryGreenDeep,
+                                            color = tokens.ink,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             modifier = Modifier.weight(1f, fill = false)
@@ -268,13 +268,13 @@ fun StorefrontScreen(
                                                         }
                                                         Spacer(Modifier.width(12.dp))
                                                         Surface(
-                                                            color = tokens.deliveryGreenSoft,
+                                                            color = tokens.brandYellowSoft,
                                                             shape = RoundedCornerShape(50)
                                                         ) {
                                                             Text(
                                                                 text = "${n.etaMinutes}m",
                                                                 style = MaterialTheme.typography.labelSmall,
-                                                                color = tokens.deliveryGreenDeep,
+                                                                color = tokens.ink,
                                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                                             )
                                                         }
@@ -509,7 +509,7 @@ fun StorefrontScreen(
                                             Text(
                                                 text = "Category: ${cat.label}",
                                                 style = MaterialTheme.typography.labelLarge,
-                                                color = tokens.deliveryGreenDeep
+                                                color = tokens.ink
                                             )
                                             Text(
                                                 text = "Filter",
@@ -751,8 +751,8 @@ fun StorefrontScreen(
                                             onClick = onQuickAddAllFavorites,
                                             shape = RoundedCornerShape(10.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = tokens.deliveryGreenDeep,
-                                                contentColor = Color.White
+                                                containerColor = tokens.brandYellow,
+                                                contentColor = tokens.onBrandYellow
                                             ),
                                             modifier = Modifier.testTag("storefront_quick_add_favorites_button")
                                         ) {
@@ -988,7 +988,7 @@ fun StorefrontScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Surface(
-                color = tokens.deliveryGreenDeep,
+                color = Color(0xFF141414) /* brand black bar */,
                 shape = RoundedCornerShape(18.dp),
                 shadowElevation = 8.dp,
                 modifier = Modifier
@@ -1295,7 +1295,7 @@ private fun ProductGridCard(
                     }
                 } else {
                     Surface(
-                        color = tokens.deliveryGreenDeep,
+                        color = tokens.brandYellow,
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.defaultMinSize(minHeight = 36.dp)
                     ) {
@@ -1313,14 +1313,14 @@ private fun ProductGridCard(
                                 Icon(
                                     imageVector = Icons.Rounded.Remove,
                                     contentDescription = "Remove one",
-                                    tint = Color.White,
+                                    tint = tokens.onBrandYellow,
                                     modifier = Modifier.size(metrics.iconSmall)
                                 )
                             }
                             Text(
                                 text = qtyInCart.toString(),
                                 style = MaterialTheme.typography.labelLarge,
-                                color = Color.White,
+                                color = tokens.onBrandYellow,
                                 modifier = Modifier.padding(horizontal = 3.dp)
                             )
                             Box(
@@ -1333,7 +1333,7 @@ private fun ProductGridCard(
                                 Icon(
                                     imageVector = Icons.Rounded.Add,
                                     contentDescription = "Add one",
-                                    tint = Color.White,
+                                    tint = tokens.onBrandYellow,
                                     modifier = Modifier.size(metrics.iconSmall)
                                 )
                             }
