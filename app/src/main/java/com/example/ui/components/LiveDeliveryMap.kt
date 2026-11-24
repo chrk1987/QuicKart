@@ -865,17 +865,13 @@ private fun BlinkitOsmStreetMapSurface(
                     android.graphics.Color.WHITE
                 }
                 routeCasingLine.outlinePaint.strokeWidth = 20f
-                routeCasingLine.setPoints(fullWaypoints)
-
-                pendingLine.outlinePaint.color = if (tokens.isDark) {
-                    android.graphics.Color.rgb(255, 212, 0)
-                } else {
-                    android.graphics.Color.rgb(20, 20, 20)
+                if (fullWaypoints.isNotEmpty()) {
+                    routeCasingLine.setPoints(fullWaypoints)
+                    pendingLine.setPoints(fullWaypoints)
                 }
-                pendingLine.outlinePaint.strokeWidth = 10f
-                pendingLine.setPoints(fullWaypoints)
-
-                coveredLine.setPoints(coveredWaypoints)
+                if (coveredWaypoints.isNotEmpty()) {
+                    coveredLine.setPoints(coveredWaypoints)
+                }
 
                 hubMarker.position = hubPoint
                 hubMarker.icon = hubDrawable
