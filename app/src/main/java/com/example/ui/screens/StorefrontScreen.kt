@@ -293,9 +293,9 @@ fun StorefrontScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            // Icons sit tight as one cluster (touch areas overlap slightly; each
-                            // badge stays inside its own icon's box); small gap before the ETA pill.
-                            horizontalArrangement = Arrangement.spacedBy((-6).dp)
+                            // Icons sit close as one cluster. Each badge reaches its box edge, so the
+                            // spacing stays >= 0 to keep badges clear of the next icon and the ETA pill.
+                            horizontalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
                             val unread = unreadInboxCount(uiState)
                             HeaderIconWithBadge(
@@ -314,7 +314,7 @@ fun StorefrontScreen(
                                 onClick = { showWishlistSheet = true },
                                 testTag = "open_wishlist_button"
                             )
-                            Spacer(Modifier.width(4.dp))
+                            Spacer(Modifier.width(8.dp))
 
                             Surface(
                                 color = tokens.brandYellowSoft,
@@ -1364,9 +1364,13 @@ private fun HeaderIconWithBadge(
     val iconSize = QuickKartMetricsTokens.metrics.iconMedium
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
+            .size(36.dp)
+            // Unbounded ripple (no clip) so a wide "9+" badge is never cut off.
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = androidx.compose.material3.ripple(bounded = false, radius = 20.dp),
+                onClick = onClick
+            )
             .testTag(testTag),
         contentAlignment = Alignment.Center
     ) {
@@ -1379,8 +1383,8 @@ private fun HeaderIconWithBadge(
         if (count > 0) {
             Box(
                 modifier = Modifier
-                    // Centre of the badge on the icon's top-right corner.
-                    .offset(x = iconSize / 2, y = -(iconSize / 2))
+                    // Badge tucked onto the icon's top-right corner, inside the icon's own box.
+                    .offset(x = iconSize / 2 - 1.dp, y = -(iconSize / 2 - 1.dp))
                     .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
                     .background(tokens.ink, RoundedCornerShape(50)) // same black count badge as the Cart tab
                     .border(1.5.dp, tokens.surface, RoundedCornerShape(50))
