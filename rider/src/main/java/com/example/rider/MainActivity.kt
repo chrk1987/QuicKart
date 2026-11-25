@@ -14,12 +14,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val initialDestination = intent?.getStringExtra("navigate_to")
-        setContent {
-            RiderApp(
-                viewModel = viewModel,
-                initialDestination = initialDestination
-            )
-        }
+        setContent { RiderApp(viewModel) }
     }
 }

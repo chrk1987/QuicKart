@@ -1,318 +1,204 @@
 package com.example.rider.ui
 
+import android.media.RingtoneManager
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.DeliveryDining
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Radar
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.DeliveryDining
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Radar
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.rider.ui.components.DeliveryCompleteOverlay
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.rider.data.ThemeMode
 import com.example.rider.ui.screens.ActiveTripScreen
-import com.example.rider.ui.screens.DutyDashboardScreen
+import com.example.rider.ui.screens.AssignmentDialog
+import com.example.rider.ui.screens.CashLedgerScreen
 import com.example.rider.ui.screens.EarningsScreen
-import com.example.rider.ui.screens.RiderAuthScreen
+import com.example.rider.ui.screens.FailedDeliveryScreen
+import com.example.rider.ui.screens.RiderHomeScreen
+import com.example.rider.ui.screens.RiderKycScreen
+import com.example.rider.ui.screens.RiderLoginScreen
 import com.example.rider.ui.screens.RiderProfileScreen
-import com.example.rider.ui.theme.LocalRiderMetrics
-import com.example.rider.ui.theme.QuickKartRiderTheme
-import com.example.rider.ui.theme.RiderThemeTokens
-import com.example.rider.ui.theme.metricsForWidth
+import com.example.rider.ui.screens.TripHistoryScreen
+import com.example.ui.theme.LocalQuickKartMetrics
+import com.example.ui.theme.QuickKartTheme
+import com.example.ui.theme.QuickKartThemeTokens
+import com.example.ui.theme.metricsForWidth
 
-private enum class RiderTab(
-    val routeId: String,
-    val label: String,
-    val selectedIcon: ImageVector,
-    val unselectedIcon: ImageVector
-) {
-    DUTY("duty_hub", "Duty", Icons.Rounded.Radar, Icons.Outlined.Radar),
-    ACTIVE_TRIP("active_trip", "Run", Icons.Rounded.DeliveryDining, Icons.Outlined.DeliveryDining),
-    EARNINGS("earnings", "Earnings", Icons.Rounded.AccountBalanceWallet, Icons.Outlined.AccountBalanceWallet),
-    PROFILE("profile", "Profile", Icons.Rounded.Person, Icons.Outlined.Person)
+private enum class Tab(val route: String, val label: String) { HOME("home", "Home"), EARNINGS("earnings", "Earnings"), TRIPS("trips", "Trips"), PROFILE("profile", "Profile") }
+
+private const val ROUTE_TRIP = "trip"
+private const val ROUTE_FAILED = "failed"
+private const val ROUTE_CASH = "cash"
+private const val ROUTE_KYC = "kyc"
+
+@Composable
+fun RiderApp(viewModel: RiderViewModel) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? ComponentActivity
+    val systemDark = isSystemInDarkTheme()
+    val dark = when (state.settings.themeMode) { ThemeMode.LIGHT -> false; ThemeMode.DARK -> true; ThemeMode.SYSTEM -> systemDark }
+    DisposableEffect(activity, dark) {
+        val style = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        activity?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+        onDispose { }
+    }
+    QuickKartTheme(darkTheme = dark, screenZoomPercent = state.settings.zoomPercent) {
+        val tokens = QuickKartThemeTokens.colors
+        BoxWithConstraints(Modifier.fillMaxSize().background(tokens.background)) {
+            CompositionLocalProvider(LocalQuickKartMetrics provides metricsForWidth(maxWidth = maxWidth, screenZoomPercent = state.settings.zoomPercent)) {
+                when {
+                    !state.isReady -> Unit
+                    !state.isLoggedIn -> RiderLoginScreen(onVerify = viewModel::verifyOtp)
+                    !state.profile.onboarded -> RiderKycScreen(
+                        profile = state.profile, onUpdate = viewModel::updateProfile, onSubmitDoc = viewModel::submitDocument,
+                        onContinue = viewModel::completeOnboarding, onBack = null, onSignOut = { viewModel.signOut() }
+                    )
+                    else -> RiderShell(state, viewModel)
+                }
+            }
+        }
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RiderApp(
-    viewModel: RiderViewModel,
-    initialDestination: String? = null
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val celebration by viewModel.celebration.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+private fun RiderShell(state: RiderUiState, vm: RiderViewModel) {
+    val tokens = QuickKartThemeTokens.colors
+    val nav = rememberNavController()
+    val entry by nav.currentBackStackEntryAsState()
+    val route = entry?.destination?.route ?: Tab.HOME.route
+    val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
-    var currentTab by rememberSaveable {
-        mutableStateOf(
-            if (initialDestination == "active_trip") RiderTab.ACTIVE_TRIP else RiderTab.DUTY
-        )
+    LaunchedEffect(state.message) {
+        state.message?.let { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(it, duration = SnackbarDuration.Short); vm.consumeMessage() }
+    }
+    // Ring once when a new assignment arrives.
+    LaunchedEffect(state.offer?.trip?.orderId) {
+        if (state.offer != null && state.settings.sound) runCatching { RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))?.play() }
+    }
+    // Leave trip screens once the trip ends (delivered / cancelled / failed).
+    LaunchedEffect(state.activeTrip == null) {
+        if (state.activeTrip == null && (route == ROUTE_TRIP || route == ROUTE_FAILED)) nav.popBackStack(Tab.HOME.route, inclusive = false)
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.snackbarMessages.collect { message ->
-            snackbarHostState.showSnackbar(message)
-        }
+    fun go(tab: Tab) {
+        if (route == tab.route) return
+        nav.navigate(tab.route) { popUpTo(Tab.HOME.route) { saveState = true }; launchSingleTop = true; restoreState = true }
     }
+    fun open(r: String) = nav.navigate(r) { launchSingleTop = true }
+    val back: () -> Unit = { if (!nav.popBackStack()) go(Tab.HOME) }
 
-    LaunchedEffect(viewModel) {
-        viewModel.navigateToActiveTripEvent.collect {
-            currentTab = RiderTab.ACTIVE_TRIP
-        }
-    }
+    val showTabs = route in Tab.entries.map { it.route }
+    if (showTabs && route != Tab.HOME.route) BackHandler { go(Tab.HOME) }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val responsiveMetrics = remember(maxWidth, state.prefs.screenZoomPercent) {
-            metricsForWidth(
-                maxWidth = maxWidth,
-                screenZoomPercent = state.prefs.screenZoomPercent
-            )
-        }
-
-        CompositionLocalProvider(LocalRiderMetrics provides responsiveMetrics) {
-            QuickKartRiderTheme(
-                darkTheme = state.prefs.isDarkTheme,
-                screenZoomPercent = state.prefs.screenZoomPercent
-            ) {
-                val tokens = RiderThemeTokens.colors
-
-                if (!state.prefs.isLoggedIn) {
-                    RiderAuthScreen(
-                        hubs = state.availableHubs,
-                        initialName = state.prefs.riderName,
-                        initialPhone = state.prefs.riderPhone,
-                        initialFleetId = state.prefs.fleetId,
-                        initialVehicle = state.prefs.vehicleType,
-                        initialHubId = state.prefs.hubId,
-                        onStartShift = viewModel::loginRider
-                    )
-                } else {
-                    if (currentTab != RiderTab.DUTY) {
-                        BackHandler { currentTab = RiderTab.DUTY }
-                    }
-
-                    val topTitle = when (currentTab) {
-                        RiderTab.DUTY -> "QK Rider • Duty Hub"
-                        RiderTab.ACTIVE_TRIP -> state.activeTrip?.let { "Run • ${it.orderId}" } ?: "Active Run"
-                        RiderTab.EARNINGS -> "Earnings & COD Ledger"
-                        RiderTab.PROFILE -> "Partner Profile"
-                    }
-
-                    Scaffold(
-                        containerColor = tokens.background,
-                        contentWindowInsets = WindowInsets.safeDrawing,
-                        snackbarHost = { SnackbarHost(snackbarHostState) },
-                        topBar = {
-                            CenterAlignedTopAppBar(
-                                title = {
-                                    Text(
-                                        text = topTitle,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                },
-                                actions = {
-                                    Surface(
-                                        color = if (state.prefs.isOnline) {
-                                            tokens.deliveryGreenSoft
-                                        } else {
-                                            tokens.surfaceElevated
-                                        },
-                                        shape = MaterialTheme.shapes.small,
-                                        modifier = Modifier.padding(end = 12.dp)
-                                    ) {
-                                        Text(
-                                            text = if (state.prefs.isOnline) "ONLINE" else "OFFLINE",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (state.prefs.isOnline) {
-                                                tokens.deliveryGreenDeep
-                                            } else {
-                                                tokens.muted
-                                            },
-                                            fontWeight = FontWeight.ExtraBold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                },
-                                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                    containerColor = tokens.surface,
-                                    titleContentColor = tokens.ink
-                                )
-                            )
-                        },
-                        bottomBar = {
-                            if (!responsiveMetrics.useNavRail) {
-                                NavigationBar(containerColor = tokens.surface) {
-                                    RiderTab.entries.forEach { tab ->
-                                        val selected = currentTab == tab
-                                        val showBadge = (tab == RiderTab.ACTIVE_TRIP && state.activeTrip != null) ||
-                                            (tab == RiderTab.DUTY && state.pendingOffer != null)
-                                        NavigationBarItem(
-                                            selected = selected,
-                                            onClick = { currentTab = tab },
-                                            icon = {
-                                                BadgedBox(
-                                                    badge = {
-                                                        if (showBadge) {
-                                                            Badge(containerColor = tokens.deliveryGreenDeep)
-                                                        }
-                                                    }
-                                                ) {
-                                                    Icon(
-                                                        imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                                        contentDescription = tab.label,
-                                                        modifier = Modifier.size(responsiveMetrics.navIconSize)
-                                                    )
-                                                }
-                                            },
-                                            label = { Text(tab.label) },
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = tokens.deliveryGreenDeep,
-                                                selectedTextColor = tokens.deliveryGreenDeep,
-                                                indicatorColor = tokens.deliveryGreenSoft
-                                            ),
-                                            modifier = Modifier.testTag("nav_tab_${tab.routeId}")
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    ) { innerPadding ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding)
-                        ) {
-                            if (responsiveMetrics.useNavRail) {
-                                NavigationRail(containerColor = tokens.surface) {
-                                    RiderTab.entries.forEach { tab ->
-                                        val selected = currentTab == tab
-                                        NavigationRailItem(
-                                            selected = selected,
-                                            onClick = { currentTab = tab },
-                                            icon = {
-                                                Icon(
-                                                    imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                                    contentDescription = tab.label
-                                                )
-                                            },
-                                            label = { Text(tab.label) },
-                                            modifier = Modifier.testTag("rail_tab_${tab.routeId}")
-                                        )
-                                    }
-                                }
-                            }
-
-                            Box(modifier = Modifier.weight(1f)) {
-                                when (currentTab) {
-                                    RiderTab.DUTY -> DutyDashboardScreen(
-                                        state = state,
-                                        onToggleOnline = viewModel::toggleOnline,
-                                        onSelectHub = viewModel::selectHub,
-                                        onAcceptOffer = viewModel::acceptOffer,
-                                        onDeclineOffer = viewModel::declineOffer,
-                                        onPingNewOffer = viewModel::pingNewOrderOffer,
-                                        onOpenActiveTrip = { currentTab = RiderTab.ACTIVE_TRIP },
-                                        onOpenEarnings = { currentTab = RiderTab.EARNINGS }
-                                    )
-
-                                    RiderTab.ACTIVE_TRIP -> ActiveTripScreen(
-                                        activeTrip = state.activeTrip,
-                                        otpError = state.otpError,
-                                        onArrivedAtHub = viewModel::markArrivedAtHub,
-                                        onToggleItem = viewModel::togglePickedItem,
-                                        onPickAllAndSeal = viewModel::pickAllAndSeal,
-                                        onToggleColdSeal = viewModel::toggleColdSeal,
-                                        onStartOutForDelivery = viewModel::startOutForDelivery,
-                                        onArrivedAtDoor = viewModel::markArrivedAtDoor,
-                                        onAttachPodPhoto = viewModel::attachPodPhoto,
-                                        onClearOtpError = viewModel::clearOtpError,
-                                        onCompleteDelivery = viewModel::completeDelivery,
-                                        onReassignTrip = { orderId, reason ->
-                                            viewModel.reassignActiveTrip(orderId, reason)
-                                            currentTab = RiderTab.DUTY
-                                        },
-                                        onGoToDuty = { currentTab = RiderTab.DUTY },
-                                        onMessage = viewModel::showMessage
-                                    )
-
-                                    RiderTab.EARNINGS -> EarningsScreen(
-                                        state = state,
-                                        onWithdrawBalance = viewModel::withdrawAvailableBalance,
-                                        onSettleCodCash = viewModel::settleCodCash
-                                    )
-
-                                    RiderTab.PROFILE -> RiderProfileScreen(
-                                        state = state,
-                                        onSelectVehicle = viewModel::selectVehicle,
-                                        onUpdateChecklist = viewModel::updateChecklist,
-                                        onToggleDarkTheme = viewModel::setDarkTheme,
-                                        onToggleNotifications = viewModel::setNotificationsEnabled,
-                                        onSetScreenZoom = viewModel::setScreenZoomPercent,
-                                        onLogout = {
-                                            viewModel.logout()
-                                            currentTab = RiderTab.DUTY
-                                        },
-                                        onMessage = viewModel::showMessage
-                                    )
-                                }
-                            }
-                        }
-
-                        DeliveryCompleteOverlay(
-                            celebration = celebration,
-                            onFindNextOrder = {
-                                viewModel.dismissCelebration()
-                                currentTab = RiderTab.DUTY
-                                viewModel.pingNewOrderOffer()
+    Scaffold(
+        containerColor = tokens.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbar) },
+        bottomBar = {
+            if (showTabs) {
+                val inset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                NavigationBar(containerColor = tokens.surface, tonalElevation = 4.dp, modifier = Modifier.height(64.dp + inset)) {
+                    Tab.entries.forEach { tab ->
+                        val selected = route == tab.route
+                        NavigationBarItem(
+                            selected = selected, onClick = { go(tab) },
+                            icon = {
+                                Icon(when (tab) {
+                                    Tab.HOME -> if (selected) Icons.Rounded.Home else Icons.Outlined.Home
+                                    Tab.EARNINGS -> if (selected) Icons.Rounded.AccountBalanceWallet else Icons.Outlined.AccountBalanceWallet
+                                    Tab.TRIPS -> if (selected) Icons.Rounded.History else Icons.Outlined.History
+                                    Tab.PROFILE -> if (selected) Icons.Rounded.Person else Icons.Outlined.Person
+                                }, null)
                             },
-                            onDismiss = {
-                                viewModel.dismissCelebration()
-                                currentTab = RiderTab.EARNINGS
-                            }
+                            label = { Text(tab.label, style = MaterialTheme.typography.labelSmall, maxLines = 1) },
+                            colors = NavigationBarItemDefaults.colors(selectedIconColor = tokens.onBrandYellow, selectedTextColor = tokens.ink, indicatorColor = tokens.brandYellow, unselectedIconColor = tokens.muted, unselectedTextColor = tokens.muted),
+                            modifier = Modifier.testTag("tab_${tab.route}")
                         )
                     }
                 }
             }
         }
+    ) { inner ->
+        Box(Modifier.fillMaxSize().padding(inner).statusBarsPadding().then(if (showTabs) Modifier else Modifier.navigationBarsPadding())) {
+            NavHost(nav, startDestination = Tab.HOME.route) {
+                composable(Tab.HOME.route) {
+                    RiderHomeScreen(state, onToggleOnline = vm::setOnline, onOpenTrip = { open(ROUTE_TRIP) }, onOpenCash = { open(ROUTE_CASH) },
+                        onOpenKyc = { open(ROUTE_KYC) }, onRequestOffer = vm::requestOfferNow)
+                }
+                composable(Tab.EARNINGS.route) { EarningsScreen(state, onInstantPayout = vm::instantPayout, onOpenCash = { open(ROUTE_CASH) }) }
+                composable(Tab.TRIPS.route) { TripHistoryScreen(state) }
+                composable(Tab.PROFILE.route) {
+                    RiderProfileScreen(state, vm::updateProfile, vm::updateSettings, onOpenKyc = { open(ROUTE_KYC) }, onSos = vm::triggerSos, onCancelSos = vm::cancelSos, onSignOut = vm::signOut)
+                }
+                composable(ROUTE_TRIP) {
+                    val trip = state.activeTrip
+                    if (trip == null) { LaunchedEffect(Unit) { back() }; return@composable }
+                    ActiveTripScreen(
+                        trip = trip, rider = state.position, onBack = back,
+                        onArrivedStore = vm::arrivedAtStore, onTogglePicked = vm::togglePicked, onConfirmPickup = vm::confirmPickup,
+                        onArrivedCustomer = vm::arrivedAtCustomer, onCalledCustomer = vm::markCalledCustomer, onPhotoTaken = vm::markPhotoTaken,
+                        onCollectCash = vm::collectCash, onComplete = vm::completeDelivery, onCancel = vm::cancelTrip,
+                        onReportIssue = { open(ROUTE_FAILED) }, onSkip = vm::skipTravel
+                    )
+                }
+                composable(ROUTE_FAILED) {
+                    val trip = state.activeTrip
+                    if (trip == null) { LaunchedEffect(Unit) { back() }; return@composable }
+                    FailedDeliveryScreen(trip, onBack = back, onSubmit = vm::reportFailedDelivery, onCall = vm::markCalledCustomer)
+                }
+                composable(ROUTE_CASH) { CashLedgerScreen(state, onBack = back, onDeposit = vm::depositCash) }
+                composable(ROUTE_KYC) {
+                    RiderKycScreen(state.profile, vm::updateProfile, vm::submitDocument, onContinue = back, onBack = back, onSignOut = { vm.signOut() })
+                }
+            }
+        }
+    }
+
+    state.offer?.let { offer ->
+        AssignmentDialog(offer, state.nowMillis, onAccept = { vm.acceptOffer(); open(ROUTE_TRIP) }, onReject = vm::rejectOffer)
     }
 }

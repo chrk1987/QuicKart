@@ -25,3 +25,6 @@ dependencyResolutionManagement {
 rootProject.name = "QuickKart"
 
 include(":app")
+include(":core-ui")
+include(":merchant")
+include(":rider")

@@ -1,1 +1,1 @@
-# QuickKart Rider Proguard rules
+# Prototype app: no shrinking rules needed.

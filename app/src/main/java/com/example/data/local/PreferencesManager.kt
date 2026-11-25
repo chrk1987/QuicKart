@@ -19,7 +19,7 @@ private val Context.quickKartDataStore: DataStore<Preferences> by preferencesDat
 data class UserPreferences(
     val isDarkTheme: Boolean = false,
     val notificationsEnabled: Boolean = true,
-    val screenZoomPercent: Int = 100,
+    val screenZoomPercent: Int = 85, // Compact by default
     val isLoggedIn: Boolean = false,
     val isGuest: Boolean = false,
     val userPhone: String = "",
@@ -78,7 +78,7 @@ class PreferencesManager(private val context: Context) {
         UserPreferences(
             isDarkTheme = prefs[Keys.IS_DARK_THEME] ?: false,
             notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
-            screenZoomPercent = (prefs[Keys.SCREEN_ZOOM_PERCENT] ?: 100).coerceIn(80, 130),
+            screenZoomPercent = (prefs[Keys.SCREEN_ZOOM_PERCENT] ?: 85).coerceIn(80, 130),
             isLoggedIn = prefs[Keys.IS_LOGGED_IN] ?: false,
             isGuest = prefs[Keys.IS_GUEST] ?: false,
             userPhone = prefs[Keys.USER_PHONE] ?: "",
