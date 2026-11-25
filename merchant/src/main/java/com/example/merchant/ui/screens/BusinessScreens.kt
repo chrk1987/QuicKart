@@ -111,6 +111,7 @@ import com.example.ui.components.SectionTitle
 import com.example.ui.components.SegmentedChoice
 import com.example.ui.components.SettingRow
 import com.example.ui.components.StatusBadge
+import com.example.ui.components.TextSizePresetPicker
 import com.example.ui.components.minuteOfDayLabel
 import com.example.ui.components.rupees
 import com.example.ui.components.timeAgo
@@ -459,9 +460,7 @@ fun AccountScreen(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Rounded.TextFields, null, tint = tokens.ink, modifier = Modifier.size(18.dp)); Text("Text & display size", style = MaterialTheme.typography.bodyMedium, color = tokens.ink)
             }
-            val presets = listOf(85 to "Compact", 100 to "Default", 115 to "Large", 130 to "Extra large")
-            SegmentedChoice(presets.map { it.first }, presets.map { it.first }.minByOrNull { kotlin.math.abs(it - state.settings.zoomPercent) } ?: 100,
-                { z -> presets.first { it.first == z }.second }, { z -> onUpdateSettings { it.copy(zoomPercent = z) } })
+            TextSizePresetPicker(state.settings.zoomPercent, { z -> onUpdateSettings { it.copy(zoomPercent = z) } })
         }
 
         QkCard {

@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -108,7 +109,7 @@ fun RiderMap(
         }
     }
 
-    Box(modifier.background(if (tokens.isDark) Color(0xFF0E141D) else Color(0xFFEAF0F6))) {
+    Box(modifier.clipToBounds().background(if (tokens.isDark) Color(0xFF0E141D) else Color(0xFFEAF0F6))) {
         AndroidView(factory = { mapView }, update = { mv ->
             riderMarker.position = OsmPoint(rider.lat, rider.lng)
             if (routeFrom != null && routeTo != null) {
@@ -128,7 +129,7 @@ fun RiderMap(
                 extraMarkers += m; mv.overlays.add(m)
             }
             mv.invalidate()
-        }, modifier = Modifier)
+        }, modifier = Modifier.matchParentSize())
         Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF555555),
             modifier = Modifier.align(Alignment.BottomStart).padding(6.dp).background(Color.White.copy(alpha = 0.7f)).padding(horizontal = 4.dp))
     }

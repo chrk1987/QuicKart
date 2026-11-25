@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Pre-Android 8 launchers: same artwork as a square badge. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item><shape android:shape="oval"><solid android:color="@color/qk_brand_yellow" /></shape></item>
+    <item android:drawable="@drawable/ic_partner_launcher_bg" />
     <item android:drawable="@drawable/ic_launcher_glyph" />
 </layer-list>

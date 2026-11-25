@@ -333,7 +333,7 @@ fun ProductEditorScreen(
             QkTextField(name, { name = it.take(60) }, "Product name", error = nameErr.takeIf { showErrors || duplicate }, testTag = "product_name")
             QkTextField(description, { description = it.take(200) }, "Description (optional)", singleLine = false, minLines = 2)
             Box {
-                QkTextField(category.ifBlank { "" }, {}, "Category", error = catErr.takeIf { showErrors }, enabled = false)
+                QkTextField(category, {}, "Category", error = catErr.takeIf { showErrors }, displayOnly = true)
                 Box(Modifier.matchParentSize().clickable { categoryMenu = true })
                 Icon(Icons.Rounded.ArrowDropDown, null, tint = tokens.ink, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp))
                 DropdownMenu(expanded = categoryMenu, onDismissRequest = { categoryMenu = false }) {

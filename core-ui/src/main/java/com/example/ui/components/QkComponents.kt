@@ -304,7 +304,9 @@ fun <T> SegmentedChoice(options: List<T>, selected: T, label: (T) -> String, onS
                         style = MaterialTheme.typography.labelLarge,
                         color = if (isSel) tokens.onBrandYellow else tokens.muted,
                         fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.padding(vertical = 9.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(vertical = 9.dp, horizontal = 4.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
@@ -313,24 +315,53 @@ fun <T> SegmentedChoice(options: List<T>, selected: T, label: (T) -> String, onS
     }
 }
 
-/** Brand switch: yellow track with black thumb when on, clear outline when off. */
+/**
+ * Brand switch: yellow track with black thumb when on, clear outline when off.
+ * Set [onBrandSurface] when it sits on a yellow card, so the "on" track turns black and stays visible.
+ */
 @Composable
-fun BrandSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun BrandSwitch(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onBrandSurface: Boolean = false
+) {
     val tokens = QuickKartThemeTokens.colors
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
         enabled = enabled,
         colors = SwitchDefaults.colors(
-            checkedTrackColor = tokens.brandYellow,
-            checkedThumbColor = BrandBlack,
-            checkedBorderColor = tokens.brandYellow,
+            checkedTrackColor = if (onBrandSurface) BrandBlack else tokens.brandYellow,
+            checkedThumbColor = if (onBrandSurface) tokens.brandYellow else BrandBlack,
+            checkedBorderColor = if (onBrandSurface) BrandBlack else tokens.brandYellow,
             uncheckedTrackColor = tokens.surfaceElevated,
             uncheckedThumbColor = tokens.muted,
             uncheckedBorderColor = tokens.border
         ),
         modifier = modifier.zoomScaledControl()
     )
+}
+
+/** Named text-size presets (same as the customer app). */
+val TEXT_SIZE_PRESETS = listOf(85 to "Compact", 100 to "Default", 115 to "Large", 130 to "Extra large")
+
+/**
+ * Text & display size picker. Chips wrap onto a second line instead of squeezing the labels,
+ * so "Extra large" never breaks mid-word at large sizes.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun TextSizePresetPicker(zoomPercent: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val selected = TEXT_SIZE_PRESETS.minByOrNull { kotlin.math.abs(it.first - zoomPercent) }?.first ?: 85
+    androidx.compose.foundation.layout.FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TEXT_SIZE_PRESETS.forEach { (z, label) -> ChoiceChip(label, z == selected, { onSelect(z) }) }
+    }
 }
 
 /** Row with leading icon circle, title/subtitle and a trailing slot (switch, chevron …). */
@@ -386,7 +417,9 @@ fun QkTextField(
     prefix: String? = null,
     leadingIcon: ImageVector? = null,
     enabled: Boolean = true,
-    testTag: String? = null
+    testTag: String? = null,
+    /** Not typeable but still a live control (e.g. a dropdown picker): keep normal colours. */
+    displayOnly: Boolean = false
 ) {
     val tokens = QuickKartThemeTokens.colors
     OutlinedTextField(
@@ -401,9 +434,12 @@ fun QkTextField(
         minLines = minLines,
         prefix = prefix?.let { { Text(it, fontWeight = FontWeight.Bold) } },
         leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
-        enabled = enabled,
+        enabled = enabled && !displayOnly,
         shape = RoundedCornerShape(14.dp),
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = tokens.ink, unfocusedBorderColor = tokens.border, focusedLabelColor = tokens.ink),
+        colors = if (displayOnly) OutlinedTextFieldDefaults.colors(
+            disabledTextColor = tokens.ink, disabledBorderColor = tokens.border, disabledLabelColor = tokens.muted,
+            disabledLeadingIconColor = tokens.ink, disabledPlaceholderColor = tokens.muted, disabledPrefixColor = tokens.ink
+        ) else OutlinedTextFieldDefaults.colors(focusedBorderColor = tokens.ink, unfocusedBorderColor = tokens.border, focusedLabelColor = tokens.ink),
         modifier = modifier
             .fillMaxWidth()
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)

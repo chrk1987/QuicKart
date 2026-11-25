@@ -265,7 +265,14 @@ private fun MerchantNavHost(
     supportForm: Boolean
 ) {
     val back: () -> Unit = { if (!nav.popBackStack()) goTab(Tab.HOME) }
-    NavHost(nav, startDestination = Tab.HOME.route) {
+    NavHost(
+        nav, startDestination = Tab.HOME.route,
+        // Quick fades so two screens never visibly overlap.
+        enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(120)) },
+        exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) },
+        popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(120)) },
+        popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) }
+    ) {
         composable(Tab.HOME.route) {
             DashboardScreen(
                 state = state,

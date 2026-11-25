@@ -147,7 +147,7 @@ fun RiderHomeScreen(
                             style = MaterialTheme.typography.bodySmall, color = if (state.isOnline) tokens.onBrandYellow.copy(alpha = 0.8f) else tokens.muted
                         )
                     }
-                    BrandSwitch(state.isOnline, onToggleOnline, modifier = Modifier.testTag("online_switch"))
+                    BrandSwitch(state.isOnline, onToggleOnline, modifier = Modifier.testTag("online_switch"), onBrandSurface = state.isOnline)
                 }
             }
             Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = BrandBlack), modifier = Modifier.fillMaxWidth()) {

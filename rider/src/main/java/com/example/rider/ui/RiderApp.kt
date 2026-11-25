@@ -116,8 +116,11 @@ private fun RiderShell(state: RiderUiState, vm: RiderViewModel) {
         state.message?.let { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(it, duration = SnackbarDuration.Short); vm.consumeMessage() }
     }
     // Ring once when a new assignment arrives.
-    LaunchedEffect(state.offer?.trip?.orderId) {
-        if (state.offer != null && state.settings.sound) runCatching { RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))?.play() }
+    DisposableEffect(state.offer?.trip?.orderId) {
+        val ring = if (state.offer != null && state.settings.sound)
+            runCatching { RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)) }.getOrNull() else null
+        runCatching { ring?.play() }
+        onDispose { runCatching { ring?.stop() } }
     }
     // Leave trip screens once the trip ends (delivered / cancelled / failed).
     LaunchedEffect(state.activeTrip == null) {
@@ -164,7 +167,14 @@ private fun RiderShell(state: RiderUiState, vm: RiderViewModel) {
         }
     ) { inner ->
         Box(Modifier.fillMaxSize().padding(inner).statusBarsPadding().then(if (showTabs) Modifier else Modifier.navigationBarsPadding())) {
-            NavHost(nav, startDestination = Tab.HOME.route) {
+            NavHost(
+        nav, startDestination = Tab.HOME.route,
+        // Quick fades so two screens never visibly overlap.
+        enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(120)) },
+        exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) },
+        popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(120)) },
+        popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) }
+    ) {
                 composable(Tab.HOME.route) {
                     RiderHomeScreen(state, onToggleOnline = vm::setOnline, onOpenTrip = { open(ROUTE_TRIP) }, onOpenCash = { open(ROUTE_CASH) },
                         onOpenKyc = { open(ROUTE_KYC) }, onRequestOffer = vm::requestOfferNow)
