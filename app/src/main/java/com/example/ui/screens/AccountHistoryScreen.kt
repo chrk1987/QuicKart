@@ -958,6 +958,17 @@ fun AccountHistoryScreen(
                         color = tokens.alertRed
                     )
                 }
+                // App version footer (also shown in About Us).
+                Text(
+                    text = "QuickKart v${com.example.BuildConfig.VERSION_NAME} (${com.example.BuildConfig.VERSION_CODE})",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = tokens.muted,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                        .testTag("app_version_text")
+                )
                 Spacer(Modifier.height(12.dp))
             }
         }
@@ -1473,26 +1484,31 @@ private fun SavedAddressRow(
                     )
                 }
             }
-            // Edit is always available (even for the only address, which can't be deleted).
-            IconButton(
-                onClick = onEdit,
-                modifier = Modifier.testTag("edit_address_${address.id}")
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Edit,
-                    contentDescription = "Edit ${address.label} address",
-                    tint = tokens.ink,
-                    modifier = Modifier.size(metrics.iconMedium)
-                )
-            }
-            if (canDelete) {
-                IconButton(onClick = onDelete) {
+            // Edit + delete sit together as one compact action cluster.
+            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                // Edit is always available (even for the only address, which can't be deleted).
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .testTag("edit_address_${address.id}")
+                ) {
                     Icon(
-                        imageVector = Icons.Rounded.DeleteOutline,
-                        contentDescription = "Delete address",
-                        tint = tokens.muted,
-                        modifier = Modifier.size(metrics.iconMedium)
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = "Edit ${address.label} address",
+                        tint = tokens.ink,
+                        modifier = Modifier.size(metrics.iconSmall + 2.dp)
                     )
+                }
+                if (canDelete) {
+                    IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.DeleteOutline,
+                            contentDescription = "Delete address",
+                            tint = tokens.muted,
+                            modifier = Modifier.size(metrics.iconSmall + 2.dp)
+                        )
+                    }
                 }
             }
         }

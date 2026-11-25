@@ -293,8 +293,9 @@ fun StorefrontScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            // Icons sit flush together as one cluster; small gap before the ETA pill.
-                            horizontalArrangement = Arrangement.spacedBy(0.dp)
+                            // Icons sit tight as one cluster (touch areas overlap slightly; each
+                            // badge stays inside its own icon's box); small gap before the ETA pill.
+                            horizontalArrangement = Arrangement.spacedBy((-6).dp)
                         ) {
                             val unread = unreadInboxCount(uiState)
                             HeaderIconWithBadge(
