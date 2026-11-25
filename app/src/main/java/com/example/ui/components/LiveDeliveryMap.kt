@@ -1214,29 +1214,6 @@ private fun drawFloatingPillLabel(
 }
 
 @Composable
-private fun MapControlButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    val tokens = QuickKartThemeTokens.colors
-    val metrics = QuickKartMetricsTokens.metrics
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(44.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = tokens.ink,
-            modifier = Modifier.size(metrics.iconMedium)
-        )
-    }
-}
-
-@Composable
 private fun LivePulseBadge(
     label: String,
     color: Color

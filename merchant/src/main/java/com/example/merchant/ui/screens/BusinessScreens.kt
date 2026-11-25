@@ -44,7 +44,7 @@ import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.Verified
-import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -447,7 +447,7 @@ fun AccountScreen(
             Text("Order preferences", style = MaterialTheme.typography.titleSmall, color = tokens.ink)
             SettingRow(Icons.Rounded.Bolt, "Auto-accept orders", "Accept with 15 min prep when all items are in stock",
                 trailing = { BrandSwitch(state.settings.autoAcceptOrders, { v -> onUpdateSettings { it.copy(autoAcceptOrders = v) } }) })
-            SettingRow(Icons.Rounded.VolumeUp, "New order sound", "Ring until you respond",
+            SettingRow(Icons.AutoMirrored.Rounded.VolumeUp, "New order sound", "Ring until you respond",
                 trailing = { BrandSwitch(state.settings.orderSound, { v -> onUpdateSettings { it.copy(orderSound = v) } }) })
         }
 

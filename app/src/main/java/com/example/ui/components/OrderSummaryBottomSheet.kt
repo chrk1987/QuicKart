@@ -35,7 +35,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Star
@@ -414,7 +414,7 @@ fun OrderSummaryBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.ReceiptLong,
+                            imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
                             contentDescription = null,
                             tint = tokens.ink,
                             modifier = Modifier.size(metrics.iconSmall)
@@ -652,7 +652,7 @@ fun LiveOrderSummarySheetTriggerBar(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Rounded.ReceiptLong,
+                            imageVector = Icons.AutoMirrored.Rounded.ReceiptLong,
                             contentDescription = "Open order summary bottom sheet",
                             tint = tokens.ink,
                             modifier = Modifier.size(metrics.iconMedium)

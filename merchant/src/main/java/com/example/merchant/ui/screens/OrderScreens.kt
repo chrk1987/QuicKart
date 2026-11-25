@@ -39,7 +39,7 @@ import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Insights
-import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material.icons.rounded.SwapHoriz
@@ -236,7 +236,7 @@ fun DashboardScreen(
         if (active.isEmpty()) {
             item {
                 EmptyState(
-                    Icons.Rounded.ReceiptLong, "No active orders",
+                    Icons.AutoMirrored.Rounded.ReceiptLong, "No active orders",
                     if (state.isAcceptingOrders) "New orders will pop up here with a sound." else "Open your store to start receiving orders.",
                     action = {
                         TextButton(onClick = onSimulateOrder, modifier = Modifier.testTag("simulate_order")) {
@@ -360,7 +360,7 @@ fun OrdersScreen(state: MerchantUiState, filter: OrdersFilter, onFilter: (Orders
         ) {
             if (list.isEmpty()) {
                 item {
-                    EmptyState(Icons.Rounded.ReceiptLong, "No ${filter.label.lowercase()} orders", "Orders will show up here as customers place them.",
+                    EmptyState(Icons.AutoMirrored.Rounded.ReceiptLong, "No ${filter.label.lowercase()} orders", "Orders will show up here as customers place them.",
                         action = { TextButton(onClick = onSimulateOrder) { Text("Simulate a new order (demo)", color = tokens.ink) } })
                 }
             }

@@ -24,11 +24,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -233,7 +233,7 @@ private fun TabIcon(tab: Tab, selected: Boolean, newCount: Int) {
         Icon(
             when (tab) {
                 Tab.HOME -> if (selected) Icons.Rounded.Home else Icons.Outlined.Home
-                Tab.ORDERS -> if (selected) Icons.Rounded.ReceiptLong else Icons.Outlined.ReceiptLong
+                Tab.ORDERS -> if (selected) Icons.AutoMirrored.Rounded.ReceiptLong else Icons.AutoMirrored.Outlined.ReceiptLong
                 Tab.CATALOGUE -> if (selected) Icons.Rounded.Inventory2 else Icons.Outlined.Inventory2
                 Tab.ACCOUNT -> if (selected) Icons.Rounded.Person else Icons.Outlined.Person
             },

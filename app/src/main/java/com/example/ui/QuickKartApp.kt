@@ -49,12 +49,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeliveryDining
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.rounded.DeliveryDining
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -659,7 +659,7 @@ private fun TabNavIcon(
         BottomTab.CART -> if (selected) Icons.Rounded.ShoppingCart else Icons.Outlined.ShoppingCart
         BottomTab.CATEGORIES -> if (selected) Icons.Rounded.GridView else Icons.Outlined.GridView
         BottomTab.TRACK -> if (selected) Icons.Rounded.DeliveryDining else Icons.Outlined.DeliveryDining
-        BottomTab.ORDERS -> if (selected) Icons.Rounded.ReceiptLong else Icons.Outlined.ReceiptLong
+        BottomTab.ORDERS -> if (selected) Icons.AutoMirrored.Rounded.ReceiptLong else Icons.AutoMirrored.Outlined.ReceiptLong
         BottomTab.ACCOUNT -> if (selected) Icons.Rounded.Person else Icons.Outlined.Person
     }
 

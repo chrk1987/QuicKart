@@ -68,7 +68,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.rounded.Stop
@@ -981,7 +981,7 @@ private fun AnimatedStageProgressCard(stage: OrderStage) {
                                 }
                                 isCurrent -> {
                                     val stageIcon = when (entry) {
-                                        OrderStage.CONFIRMED -> Icons.Rounded.ReceiptLong
+                                        OrderStage.CONFIRMED -> Icons.AutoMirrored.Rounded.ReceiptLong
                                         OrderStage.PACKING -> Icons.Rounded.Inventory2
                                         OrderStage.OUT_FOR_DELIVERY -> Icons.Rounded.DeliveryDining
                                         OrderStage.DELIVERED -> Icons.Rounded.Check
